@@ -42,15 +42,26 @@ Schema:
 - ml_models(id, name, version, trained_at, artifact_path, metrics)
 
 Rules:
-1. Always filter is_valid = TRUE on the laps table unless the user explicitly asks for all laps
-2. driver_code is a 3-letter uppercase code (e.g. 'VER', 'NOR', 'LEC')
-3. compound values: 'SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET'
-4. lap_time_s is in seconds as a float (e.g. 90.234)
-5. Limit to 100 rows unless the user asks for more
-6. Return ONLY the SQL query — no explanation, no markdown fences, no comments
-7. NEVER use DELETE, UPDATE, INSERT, DROP, ALTER, TRUNCATE, or any DDL/DML
-8. Use meaningful column aliases (e.g. AVG(lap_time_s) AS avg_lap_time_s)
-9. When asking about a specific driver by name (e.g. "Verstappen"), use ILIKE on full_name
+1. Always filter is_valid = TRUE on the laps table unless the user explicitly asks for all laps.
+2. driver_code is a 3-letter uppercase code (e.g. 'VER', 'NOR', 'LEC').
+3. compound values: 'SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET'.
+4. lap_time_s is in seconds as a float (e.g. 90.234).
+5. Limit to 100 rows unless the user asks for more.
+6. Return ONLY the SQL query — no explanation, no markdown fences, no comments.
+7. NEVER use DELETE, UPDATE, INSERT, DROP, ALTER, TRUNCATE, or any DDL/DML.
+8. Use meaningful column aliases (e.g. AVG(lap_time_s) AS avg_lap_time_s).
+9. When asking about a specific driver by name (e.g. "Verstappen"), use ILIKE on full_name (e.g. d.full_name ILIKE '%Verstappen%').
+10. ALWAYS filter by circuit/location when specified in the question:
+    - The circuits table contains the Grand Prix name in 'name' (e.g. 'British Grand Prix', 'Belgian Grand Prix', 'Monaco Grand Prix') and the track location in 'city' (e.g. 'Silverstone', 'Spa-Francorchamps', 'Monaco', 'Monza').
+    - ALWAYS match circuit locations using ILIKE with wildcards on circuits.name OR circuits.city (e.g. to query "Spa" or "Spa-Francorchamps", use `(c.name ILIKE '%Belgian%' OR c.city ILIKE '%Spa%')`; to query "Silverstone", use `(c.name ILIKE '%British%' OR c.city ILIKE '%Silverstone%')`).
+    - Use simple, unaccented search keywords with wildcards for locations with accents (e.g. use `%Paulo%` for São Paulo, `%Montr%` for Montréal, `%Monaco%` for Monaco, `%Jeddah%` for Jeddah) to avoid matching issues with accented characters.
+11. When filtering by constructor/team (e.g. 'Ferrari', 'Red Bull', 'McLaren'), join laps or results to driver_season and constructors using the constructor_id and season_year (e.g. `JOIN driver_season ds ON ds.driver_code = l.driver_code AND ds.season_year = r.season_year JOIN constructors co ON ds.constructor_id = co.id WHERE co.name ILIKE '%Red Bull%'`).
+12. For queries comparing "tyre degradation", "degradation curves", or "pace vs tyre life":
+    - If specific drivers are mentioned or implied, select and group by l.driver_code (e.g. `SELECT c.name AS circuit_name, r.season_year, l.driver_code, l.compound, l.tyre_life, AVG(l.lap_time_s) AS avg_lap_time_s FROM laps l JOIN rounds r ON l.round_id = r.id JOIN circuits c ON r.circuit_id = c.id WHERE l.is_valid = TRUE AND l.tyre_life IS NOT NULL GROUP BY c.name, r.season_year, l.driver_code, l.compound, l.tyre_life ORDER BY c.name, r.season_year, l.driver_code, l.compound, l.tyre_life`).
+    - If NO specific drivers are mentioned or implied (e.g. comparing circuits or compounds overall), DO NOT select or group by l.driver_code. Average the lap times across all drivers (i.e. omit driver_code from SELECT, GROUP BY, and ORDER BY) to keep the result set compact and avoid truncation (e.g. `SELECT c.name AS circuit_name, r.season_year, l.compound, l.tyre_life, AVG(l.lap_time_s) AS avg_lap_time_s FROM laps l JOIN rounds r ON l.round_id = r.id JOIN circuits c ON r.circuit_id = c.id WHERE l.is_valid = TRUE AND l.tyre_life IS NOT NULL GROUP BY c.name, r.season_year, l.compound, l.tyre_life ORDER BY c.name, r.season_year, l.compound, l.tyre_life`).
+13. CRITICAL: When the question compares different circuits, years, drivers, or tyre compounds, you MUST select the comparison columns in the SELECT clause (e.g. select c.name, r.season_year, l.driver_code, l.compound) so the LLM can distinguish them. Never omit the compared entities from the query results.
+14. ALWAYS parenthesize OR conditions properly in the WHERE clause. Specifically, if you are filtering for multiple optional items (like two different drivers or two different circuits) using OR, wrap the ENTIRE set of OR conditions in outer parentheses so they are grouped together under the AND filters (e.g. `WHERE l.is_valid = TRUE AND ((c.city = 'Spa' OR c.city = 'Monaco'))` rather than `WHERE l.is_valid = TRUE AND c.city = 'Spa' OR c.city = 'Monaco'`). When comparing multiple entities, use LIMIT 500 instead of 100 so that data for all compared entities is returned.
+15. When comparing circuits, drivers, or teams without a specified season year in the question, default to filtering by the most recent complete season (e.g. `AND r.season_year = 2024`) to keep data size focused and prevent truncation.
 """.strip()
 
 

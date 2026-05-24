@@ -103,8 +103,8 @@ def get_clean_laps(session: fastf1.core.Session) -> pd.DataFrame:
     Returns:
         Cleaned DataFrame of valid racing laps.
     """
-    # Use track_status=False instead of deprecated messages=False
-    safe_session_load(session, laps=True, telemetry=False, weather=False, track_status=False)
+    # Use messages=False as expected by FastF1 3.8.3
+    safe_session_load(session, laps=True, telemetry=False, weather=False, messages=False)
     laps = session.laps.copy() if session.laps is not None else None
 
     if laps is None or laps.empty or "LapTime" not in laps.columns:
@@ -198,8 +198,8 @@ def seed_round_to_db(year: int, round_number: int, db: Session) -> str:
     """
     # ── Load session ─────────────────────────────────────────────────────────
     race_session = load_session(year, round_number, "R")
-    # Use track_status=False instead of deprecated messages=False
-    safe_session_load(race_session, laps=True, telemetry=False, weather=False, track_status=False)
+    # Use messages=False as expected by FastF1 3.8.3
+    safe_session_load(race_session, laps=True, telemetry=False, weather=False, messages=False)
 
     event = race_session.event
     event_name = event["EventName"]
@@ -300,8 +300,8 @@ def seed_round_to_db(year: int, round_number: int, db: Session) -> str:
     # ── Qualifying ───────────────────────────────────────────────────────────
     try:
         quali_session = load_session(year, round_number, "Q")
-        # Use track_status=False instead of deprecated messages=False
-        safe_session_load(quali_session, laps=True, telemetry=False, weather=False, track_status=False)
+        # Use messages=False as expected by FastF1 3.8.3
+        safe_session_load(quali_session, laps=True, telemetry=False, weather=False, messages=False)
         qual_results = quali_session.results
 
         if qual_results is not None and not qual_results.empty:

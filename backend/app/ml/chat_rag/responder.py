@@ -36,7 +36,7 @@ provided query results. Follow these guidelines:
 - NEVER reference the SQL query or database schema in your answer
 """.strip()
 
-MAX_DATA_CHARS = 2000  # Cap data JSON to fit within LLM context window
+MAX_DATA_CHARS = 10000  # Cap data CSV to fit within Groq free-tier TPM limits (~2.5k tokens)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -72,12 +72,12 @@ def answer_question(user_question: str, db: Session) -> dict:
     # Step 2: Execute the SQL safely
     data = retriever.execute_safe_query(sql, db)
 
-    # Step 3: Format data as compact JSON for the LLM context
-    data_json = _format_data(data)
+    # Step 3: Format data as compact CSV for the LLM context
+    data_csv = _format_data(data)
     row_count = len(data)
 
     # Step 4: Generate the natural language answer
-    context_message = f"Question: {user_question}\n\nQuery results ({row_count} rows):\n{data_json}"
+    context_message = f"Question: {user_question}\n\nQuery results ({row_count} rows):\n{data_csv}"
 
     try:
         answer = chat_completion(
@@ -105,37 +105,43 @@ def answer_question(user_question: str, db: Session) -> dict:
 
 def _format_data(data: list[dict]) -> str:
     """
-    Serialize query results to compact JSON, capped at MAX_DATA_CHARS.
-
-    If the full data exceeds the cap, truncates to as many rows as fit
-    and appends a note so the LLM knows data was cut.
+    Serialize query results to compact CSV, capped at MAX_DATA_CHARS.
     """
     if not data:
-        return "[]"
+        return ""
 
-    # Check for error case
     if len(data) == 1 and "error" in data[0]:
-        return json.dumps(data, indent=None)
+        return f"Error: {data[0]['error']}"
 
-    # Try full serialization first
-    try:
-        full = json.dumps(data, default=str)
-        if len(full) <= MAX_DATA_CHARS:
-            return full
-    except Exception:
-        pass
+    # Extract headers
+    headers = list(data[0].keys())
+    lines = [",".join(headers)]
 
-    # Truncate row by row until we fit
-    for n_rows in range(len(data) - 1, 0, -1):
-        truncated = data[:n_rows]
-        try:
-            body = json.dumps(truncated, default=str)
-        except Exception:
-            continue
-        note = f' ... ({len(data) - n_rows} more rows truncated)'
-        combined = body[:-1] + note + "]"  # Append note inside array brackets
-        if len(combined) <= MAX_DATA_CHARS:
-            return combined
+    for row in data:
+        row_values = []
+        for h in headers:
+            val = row.get(h)
+            if isinstance(val, float):
+                row_values.append(f"{val:.3f}")
+            else:
+                row_values.append(str(val))
+        lines.append(",".join(row_values))
 
-    # Fallback: just the first row
-    return json.dumps(data[:1], default=str)
+    full_csv = "\n".join(lines)
+    if len(full_csv) <= MAX_DATA_CHARS:
+        return full_csv
+
+    # Truncate row by row if too large
+    truncated_lines = [lines[0]]
+    current_len = len(lines[0])
+    truncated_count = 0
+
+    for line in lines[1:]:
+        if current_len + len(line) + 1 + 50 > MAX_DATA_CHARS:
+            truncated_count = len(lines) - len(truncated_lines)
+            break
+        truncated_lines.append(line)
+        current_len += len(line) + 1
+
+    note = f"\n... ({truncated_count} more rows truncated)" if truncated_count > 0 else ""
+    return "\n".join(truncated_lines) + note
