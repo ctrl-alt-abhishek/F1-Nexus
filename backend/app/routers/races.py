@@ -12,7 +12,7 @@ All SQLAlchemy calls are wrapped in asyncio.to_thread() per spec rule §12 #3.
 import asyncio
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -33,7 +33,10 @@ router = APIRouter(prefix="/races", tags=["races"])
 # ── GET /races/{year} ─────────────────────────────────────────────────────────
 
 @router.get("/{year}", response_model=list[RoundSchema])
-async def list_rounds(year: int, db: Session = Depends(get_db)):
+async def list_rounds(
+    year: int = Path(..., ge=2018, le=2030, description="Season year"),
+    db: Session = Depends(get_db),
+):
     """All rounds for a season with circuit info, ordered by round number."""
     def _query():
         return (
@@ -51,8 +54,8 @@ async def list_rounds(year: int, db: Session = Depends(get_db)):
 
 @router.get("/{year}/{round_number}", response_model=RaceAnalysisSchema)
 async def get_race_analysis(
-    year: int,
-    round_number: int,
+    year: int = Path(..., ge=2018, le=2030, description="Season year"),
+    round_number: int = Path(..., ge=1, le=24, description="Round number"),
     db: Session = Depends(get_db),
 ):
     """
@@ -135,8 +138,8 @@ async def get_race_analysis(
 
 @router.get("/{year}/{round_number}/laps", response_model=PaginatedLapsSchema)
 async def get_laps(
-    year: int,
-    round_number: int,
+    year: int = Path(..., ge=2018, le=2030, description="Season year"),
+    round_number: int = Path(..., ge=1, le=24, description="Round number"),
     driver_code: str | None = Query(None, description="Filter by 3-letter driver code"),
     compound: str | None = Query(None, description="Filter by compound (SOFT, MEDIUM, HARD…)"),
     page: int = Query(1, ge=1),
@@ -275,6 +278,9 @@ def _build_driver_curves(
             round_enc=0,  # Inference with unknown circuit — acceptable fallback
         )
     except Exception:
+        return []
+
+    if curve_df is None or curve_df.empty or "tire_age" not in curve_df.columns or "predicted_lap_time_s" not in curve_df.columns:
         return []
 
     return [

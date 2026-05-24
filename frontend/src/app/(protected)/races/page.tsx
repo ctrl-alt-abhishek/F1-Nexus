@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
 import { Flag, MapPin, Calendar, ArrowRight } from "lucide-react";
 
-// Matches backend RoundSchema (which includes nested CircuitSchema)
 interface CircuitInfo {
   id: number;
   name: string;
@@ -48,23 +45,28 @@ export default function RacesPage() {
   }, [year]);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-12 max-w-7xl mx-auto animate-in fade-in duration-500">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Flag className="text-red-500 w-8 h-8" />
+          <h1 className="text-5xl font-bold text-on-surface tracking-tight font-space flex items-center gap-3">
+            <Flag className="text-primary w-10 h-10" />
             Season Calendar
           </h1>
-          <p className="text-slate-400 mt-1">Race results and telemetry analysis</p>
+          <p className="text-on-surface-variant mt-3 text-lg font-space">
+            Race results and tyre degradation telemetry logs for the {year} season rounds.
+          </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           {[2026, 2025, 2024, 2023, 2022].map(y => (
             <button
               key={y}
               onClick={() => setYear(y)}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                year === y ? "bg-red-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              className={`px-4 py-3 border text-[10px] font-bold rounded-xl transition-all font-mono uppercase tracking-widest ${
+                year === y
+                  ? "bg-primary border-primary text-white font-bold"
+                  : "bg-white/5 border-white/10 text-on-surface-variant hover:border-primary/50 hover:text-white"
               }`}
             >
               {y}
@@ -73,48 +75,62 @@ export default function RacesPage() {
         </div>
       </div>
 
+      {/* Grid List */}
       {loading ? (
         <div className="flex justify-center py-20"><Spinner size="lg" /></div>
       ) : races.length === 0 ? (
-        <div className="text-center py-20 text-slate-500">No races found for {year}.</div>
+        <div className="text-center py-20 text-on-surface-variant/50 font-mono uppercase text-sm border border-dashed border-white/5 rounded-2xl bg-white/[0.01]">
+          No races found for {year} season.
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {races.map((round) => (
-            <Card key={round.round_number} className="glass hover:border-slate-600 transition-colors flex flex-col group">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start mb-2">
-                  <Badge variant="secondary">Round {round.round_number}</Badge>
+            <div 
+              key={round.round_number} 
+              className="glass-card hover-float group flex flex-col justify-between p-6 border border-white/5 min-h-[250px]"
+            >
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-wider bg-white/5 text-on-surface-variant border border-white/10 px-3 py-1 rounded-full">
+                    Round {String(round.round_number).padStart(2, '0')}
+                  </span>
                 </div>
-                <CardTitle className="text-xl">{round.name || `Round ${round.round_number}`}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 flex-1">
-                {round.race_date && (
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <Calendar className="w-4 h-4" />
-                    {new Date(round.race_date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
-                  </div>
-                )}
-                {round.circuit && (
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <MapPin className="w-4 h-4" />
-                    {round.circuit.name}{round.circuit.city ? `, ${round.circuit.city}` : ''}{round.circuit.country ? ` · ${round.circuit.country}` : ''}
-                  </div>
-                )}
-                {round.circuit?.track_length_km && (
-                  <div className="text-xs text-slate-500 pt-2 border-t border-slate-800">
-                    Track length: {round.circuit.track_length_km} km
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="pt-0">
+                <h3 className="text-xl font-bold font-space text-white leading-snug group-hover:text-primary transition-colors">
+                  {round.name || `Round ${round.round_number}`}
+                </h3>
+                
+                <div className="space-y-2.5 mt-6 border-t border-white/5 pt-4">
+                  {round.race_date && (
+                    <div className="flex items-center gap-2.5 text-xs text-on-surface-variant">
+                      <Calendar className="w-4 h-4 text-primary shrink-0" />
+                      <span className="font-space">
+                        {new Date(round.race_date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+                      </span>
+                    </div>
+                  )}
+                  {round.circuit && (
+                    <div className="flex items-center gap-2.5 text-xs text-on-surface-variant">
+                      <MapPin className="w-4 h-4 text-primary shrink-0" />
+                      <span className="font-space">
+                        {round.circuit.name}{round.circuit.city ? `, ${round.circuit.city}` : ''}{round.circuit.country ? ` • ${round.circuit.country}` : ''}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
+                <span className="font-mono text-[9px] text-on-surface-variant/50 uppercase">
+                  {round.circuit?.track_length_km ? `${round.circuit.track_length_km} km length` : "Pending config"}
+                </span>
                 <Link 
                   href={`/races/${year}/${round.round_number}`}
-                  className="w-full flex items-center justify-center gap-2 bg-slate-800/50 hover:bg-slate-800 py-2 rounded-md text-sm font-medium transition-colors group-hover:text-red-400"
+                  className="font-mono text-[10px] font-bold uppercase tracking-widest py-2.5 px-4 bg-primary/10 border border-primary/20 text-primary rounded-xl transition-all hover:bg-primary/20 flex items-center gap-2"
                 >
-                  View Telemetry <ArrowRight className="w-4 h-4" />
+                  Analysis <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
-              </CardFooter>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}

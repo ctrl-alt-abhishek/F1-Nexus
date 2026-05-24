@@ -25,14 +25,46 @@ from app.models.sql import (
 logger = logging.getLogger(__name__)
 
 
+def patch_requests_timeout(timeout: float = 120.0):
+    """
+    Globally patch requests.Session.send to apply a default timeout
+    if none is specified.
+    """
+    import requests
+    original_send = requests.Session.send
+    def new_send(self, request, **kwargs):
+        if kwargs.get("timeout") is None:
+            kwargs["timeout"] = timeout
+        return original_send(self, request, **kwargs)
+    requests.Session.send = new_send
+
+
 def init_cache() -> None:
     """
     Enable FastF1's local disk cache. MUST be called before any session load.
     Without this, every call re-downloads raw timing data (~50MB per race).
     Called once in main.py lifespan handler at startup.
     """
+    patch_requests_timeout(120.0)
     fastf1.Cache.enable_cache(settings.FASTF1_CACHE_DIR)
     logger.info("FastF1 cache enabled at: %s", settings.FASTF1_CACHE_DIR)
+
+
+def safe_session_load(session: fastf1.core.Session, **kwargs) -> None:
+    """
+    Load a session with cache corruption safety.
+    If loading fails with the disk cache enabled, disable the cache
+    temporarily to load directly from the API.
+    """
+    try:
+        session.load(**kwargs)
+    except Exception as e:
+        logger.warning(
+            "Failed to load session %s with cache: %s. Retrying with cache disabled.",
+            session, e
+        )
+        with fastf1.Cache.disabled():
+            session.load(**kwargs)
 
 
 def load_session(
@@ -71,12 +103,13 @@ def get_clean_laps(session: fastf1.core.Session) -> pd.DataFrame:
     Returns:
         Cleaned DataFrame of valid racing laps.
     """
-    session.load(laps=True, telemetry=False, weather=False, messages=False)
-    laps = session.laps.copy()
+    # Use track_status=False instead of deprecated messages=False
+    safe_session_load(session, laps=True, telemetry=False, weather=False, track_status=False)
+    laps = session.laps.copy() if session.laps is not None else None
 
-    if laps.empty:
-        logger.warning("No laps returned for session %s", session)
-        return laps
+    if laps is None or laps.empty or "LapTime" not in laps.columns:
+        logger.warning("No laps returned or missing LapTime column for session %s", session)
+        return pd.DataFrame()
 
     # 1. Drop laps with no recorded time
     laps = laps[laps["LapTime"].notna()].copy()
@@ -165,7 +198,8 @@ def seed_round_to_db(year: int, round_number: int, db: Session) -> str:
     """
     # ── Load session ─────────────────────────────────────────────────────────
     race_session = load_session(year, round_number, "R")
-    race_session.load(laps=True, telemetry=False, weather=False, messages=False)
+    # Use track_status=False instead of deprecated messages=False
+    safe_session_load(race_session, laps=True, telemetry=False, weather=False, track_status=False)
 
     event = race_session.event
     event_name = event["EventName"]
@@ -266,7 +300,8 @@ def seed_round_to_db(year: int, round_number: int, db: Session) -> str:
     # ── Qualifying ───────────────────────────────────────────────────────────
     try:
         quali_session = load_session(year, round_number, "Q")
-        quali_session.load(laps=True, telemetry=False, weather=False, messages=False)
+        # Use track_status=False instead of deprecated messages=False
+        safe_session_load(quali_session, laps=True, telemetry=False, weather=False, track_status=False)
         qual_results = quali_session.results
 
         if qual_results is not None and not qual_results.empty:

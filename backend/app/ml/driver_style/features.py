@@ -34,7 +34,7 @@ def extract_style_features(
     """
     try:
         # Load telemetry only for this specific driver's fastest lap
-        laps = session.laps.pick_driver(driver_code)
+        laps = session.laps.pick_drivers(driver_code)
         if laps.empty:
             logger.warning("No laps found for driver %s", driver_code)
             return {}

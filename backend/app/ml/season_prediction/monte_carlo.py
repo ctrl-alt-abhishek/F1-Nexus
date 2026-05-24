@@ -73,6 +73,7 @@ def simulate_season(
     year: int,
     total_rounds: int = 24,
     profile: str = "balanced",
+    seed: int | None = 42,
 ) -> list[dict]:
     """
     Run Monte Carlo championship simulation.
@@ -161,7 +162,7 @@ def simulate_season(
     std_multiplier = {"balanced": 1.0, "aggressive": 1.5, "conservative": 0.7}.get(profile, 1.0)
 
     # ── Monte Carlo simulation ─────────────────────────────────────────────────
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(seed)
     championship_wins = np.zeros(len(drivers))
     podium_counts = np.zeros(len(drivers))
     total_points_sum = np.zeros(len(drivers))

@@ -34,6 +34,7 @@ engine = create_engine(
     pool_pre_ping=True,
     pool_size=5,
     max_overflow=10,
+    pool_recycle=300,
     echo=False,
     connect_args=_NEON_CONNECT_ARGS,
 )

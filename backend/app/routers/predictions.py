@@ -13,7 +13,7 @@ Cache key format: "{endpoint}:{params}" → (unix_timestamp, data)
 import asyncio
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -57,7 +57,7 @@ def _cache_set(key: str, data) -> None:
 
 @router.get("/championship/{year}", response_model=ChampionshipPredictionSchema)
 async def get_championship_prediction(
-    year: int,
+    year: int = Path(..., ge=2018, le=2030, description="Season year"),
     total_rounds: int | None = Query(None, description="Total rounds in the season"),
     profile: str = Query("balanced", description="balanced | aggressive | conservative"),
     db: Session = Depends(get_db),
@@ -88,7 +88,7 @@ async def get_championship_prediction(
     from app.ml.season_prediction.monte_carlo import simulate_season
 
     results = await asyncio.to_thread(
-        simulate_season, db, year, total_rounds, profile
+        simulate_season, db, year, total_rounds, profile, 42
     )
 
     if not results:
@@ -111,7 +111,7 @@ async def get_championship_prediction(
 
 @router.get("/race/{round_id}", response_model=RaceOutcomeSchema)
 async def get_race_prediction(
-    round_id: int,
+    round_id: int = Path(..., ge=1, description="Round ID"),
     db: Session = Depends(get_db),
 ):
     """
@@ -191,7 +191,7 @@ async def get_race_prediction(
 
 @router.get("/pit-window", response_model=PitWindowSchema)
 async def get_pit_window(
-    round_id: int = Query(..., description="Round ID"),
+    round_id: int = Query(..., ge=1, description="Round ID"),
     driver_code: str = Query(..., description="3-letter driver code, e.g. VER"),
     current_lap: int = Query(..., ge=1),
     tire_age: int = Query(..., ge=1, description="Current tyre life in laps"),

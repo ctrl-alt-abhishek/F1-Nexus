@@ -42,7 +42,7 @@ router = APIRouter(prefix="/drivers", tags=["drivers"])
 
 @router.get("", response_model=list[DriverWithTeamSchema])
 async def list_drivers(
-    year: int = Query(2024, description="Season year for team lookup"),
+    year: int = Query(2024, ge=2018, le=2030, description="Season year for team lookup"),
     db: Session = Depends(get_db),
 ):
     """All drivers with their constructor for the given season."""

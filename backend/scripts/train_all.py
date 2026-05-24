@@ -182,7 +182,12 @@ def train_driver_style(years: list[int]) -> dict | None:
         for rnd in sample_rounds:
             try:
                 session = fastf1.get_session(year, rnd, "Q")
-                session.load(laps=True, telemetry=True, weather=False, messages=False)
+                try:
+                    session.load(laps=True, telemetry=True, weather=False, track_status=False)
+                except Exception as e:
+                    logger.warning("  Failed loading %d R%d Q with cache, trying without cache: %s", year, rnd, e)
+                    with fastf1.Cache.disabled():
+                        session.load(laps=True, telemetry=True, weather=False, track_status=False)
                 sessions_to_analyze.append(session)
                 drivers = [str(d)[:3] for d in session.drivers]
                 all_drivers.update(drivers)

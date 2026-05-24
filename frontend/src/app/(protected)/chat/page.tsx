@@ -2,12 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { fetchApi } from "@/lib/api";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Send, Bot, User, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -16,7 +12,6 @@ interface ChatMessage {
   data?: any[];
 }
 
-// Default suggestions (matching backend _DEFAULT_SUGGESTIONS) for when the API is unreachable
 const FALLBACK_SUGGESTIONS = [
   "Who had the fastest lap at Monaco 2023?",
   "Compare VER and NOR tyre degradation at Silverstone 2024",
@@ -38,7 +33,6 @@ export default function ChatPage() {
   }, [messages]);
 
   useEffect(() => {
-    // Try to fetch personalized suggestions (requires auth — will silently fallback)
     async function getSuggestions() {
       try {
         const result = await fetchApi<{suggestions: string[]}>("/chat/suggestions", { requireAuth: true });
@@ -46,7 +40,6 @@ export default function ChatPage() {
           setSuggestions(result.suggestions);
         }
       } catch (err) {
-        // Auth or network error — use fallback suggestions (already set)
         console.debug("Using fallback suggestions:", err);
       }
     }
@@ -84,38 +77,41 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] max-w-4xl mx-auto flex flex-col animate-in fade-in">
-      <div className="mb-4">
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Sparkles className="text-red-500 w-8 h-8" />
+    <div className="h-[calc(100vh-8rem)] max-w-5xl mx-auto flex flex-col justify-between animate-in fade-in duration-500 gap-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-5xl font-bold tracking-tight text-white font-space flex items-center gap-3">
+          <Sparkles className="text-primary w-10 h-10 animate-pulse" />
           Nexus AI
         </h1>
-        <p className="text-slate-400 mt-1">Ask questions about F1 strategy, telemetry, and history.</p>
+        <p className="text-on-surface-variant mt-3 text-lg font-space">
+          Ask strategy questions, query telemetry, or review tyre degradation models using NLP.
+        </p>
       </div>
 
-      <Card className="flex-1 glass flex flex-col overflow-hidden">
-        <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Main Glass Viewport */}
+      <div className="flex-1 glass-card flex flex-col overflow-hidden relative border border-white/5">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
-              <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center">
-                <Bot className="w-8 h-8 text-red-500" />
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-8 max-w-xl mx-auto">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center shadow-lg shadow-black/20">
+                <Bot className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-200">How can I help you today?</h3>
-                <p className="text-sm text-slate-400 mt-2 max-w-sm">
-                  I can analyze telemetry data, explain tyre strategies, or look up historical race results.
+                <h3 className="text-2xl font-bold text-white font-space">How can I help you today?</h3>
+                <p className="text-sm text-on-surface-variant mt-2 font-space">
+                  I query real-time race sessions, historical lap times, tyre stint durations, and Monte Carlo models.
                 </p>
               </div>
-              <div className="flex flex-wrap justify-center gap-2 max-w-lg mt-4">
+              <div className="flex flex-wrap justify-center gap-2 mt-4 font-mono">
                 {suggestions.map((s, i) => (
-                  <Badge 
+                  <button 
                     key={i} 
-                    variant="outline" 
-                    className="cursor-pointer hover:bg-slate-800 py-1.5 px-3 text-xs"
+                    className="border border-white/10 bg-white/5 hover:border-primary/50 hover:bg-glass-hover text-on-surface-variant hover:text-white py-2.5 px-4 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
                     onClick={() => handleSend(s)}
                   >
                     {s}
-                  </Badge>
+                  </button>
                 ))}
               </div>
             </div>
@@ -123,25 +119,39 @@ export default function ChatPage() {
             <div className="space-y-6">
               {messages.map((msg, idx) => (
                 <div key={idx} className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                  <div className={`w-8 h-8 rounded flex items-center justify-center shrink-0 ${
-                    msg.role === "user" ? "bg-red-600 text-white" : "bg-slate-800 text-slate-300 border border-slate-700"
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border select-none ${
+                    msg.role === "user" 
+                      ? "bg-primary border-primary text-white" 
+                      : "bg-white/5 border-white/10 text-on-surface-variant"
                   }`}>
-                    {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4 text-red-400" />}
+                    {msg.role === "user" ? <User className="w-4.5 h-4.5" /> : <Bot className="w-4.5 h-4.5 text-primary" />}
                   </div>
-                  <div className={`rounded-lg px-4 py-3 max-w-[80%] ${
-                    msg.role === "user" ? "bg-red-900/20 border border-red-900/50 text-slate-200" : "bg-slate-800/50 border border-slate-700/50 text-slate-300"
+                  <div className={`rounded-2xl px-5 py-4 max-w-[80%] border ${
+                    msg.role === "user" 
+                      ? "bg-primary/10 border-primary/20 text-white font-sans" 
+                      : "bg-white/5 border-white/5 text-on-surface font-sans"
                   }`}>
                     <div className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</div>
+                    
+                    {/* Nested SQL details */}
                     {msg.sql && (
-                      <details className="mt-3 text-xs">
-                        <summary className="text-slate-500 cursor-pointer hover:text-slate-400">View generated SQL</summary>
-                        <pre className="mt-2 p-2 bg-slate-900 rounded text-slate-400 overflow-x-auto">{msg.sql}</pre>
+                      <details className="mt-4 text-xs font-mono border-t border-white/5 pt-3 group">
+                        <summary className="text-on-surface-variant/60 cursor-pointer hover:text-primary transition-colors uppercase tracking-widest text-[9px] font-bold">
+                          View generated SQL
+                        </summary>
+                        <pre className="mt-2.5 p-3.5 bg-black/50 border border-white/5 rounded-xl text-primary font-bold overflow-x-auto whitespace-pre-wrap">
+                          {msg.sql}
+                        </pre>
                       </details>
                     )}
+                    
+                    {/* Nested raw data details */}
                     {msg.data && msg.data.length > 0 && (
-                      <details className="mt-2 text-xs">
-                        <summary className="text-slate-500 cursor-pointer hover:text-slate-400">View raw data ({msg.data.length} rows)</summary>
-                        <pre className="mt-2 p-2 bg-slate-900 rounded text-slate-400 overflow-x-auto max-h-40">
+                      <details className="mt-2 text-xs font-mono group">
+                        <summary className="text-on-surface-variant/60 cursor-pointer hover:text-primary transition-colors uppercase tracking-widest text-[9px] font-bold">
+                          View raw results ({msg.data.length} rows)
+                        </summary>
+                        <pre className="mt-2.5 p-3.5 bg-black/50 border border-white/5 rounded-xl text-on-surface-variant/80 overflow-x-auto max-h-48 custom-scrollbar">
                           {JSON.stringify(msg.data, null, 2)}
                         </pre>
                       </details>
@@ -149,41 +159,48 @@ export default function ChatPage() {
                   </div>
                 </div>
               ))}
+              
               {loading && (
                 <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center shrink-0">
-                    <Bot className="w-4 h-4 text-red-400" />
+                  <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-on-surface-variant flex items-center justify-center shrink-0">
+                    <Bot className="w-4.5 h-4.5 text-primary" />
                   </div>
-                  <div className="rounded-lg px-4 py-3 bg-slate-800/50 border border-slate-700/50">
-                    <Spinner size="sm" className="text-slate-400" />
+                  <div className="rounded-2xl px-5 py-4 bg-white/5 border border-white/5">
+                    <Spinner size="sm" className="text-primary" />
                   </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
           )}
-        </CardContent>
-        <CardFooter className="p-4 border-t border-slate-800 bg-slate-900/80">
+        </div>
+
+        {/* Form Input Footer */}
+        <div className="p-4 border-t border-white/5 bg-black/20">
           <form 
-            className="flex w-full gap-2"
+            className="flex w-full gap-3"
             onSubmit={(e) => {
               e.preventDefault();
               handleSend(input);
             }}
           >
-            <Input 
+            <input 
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about tyre degradation at Spa..."
-              className="flex-1 bg-slate-950 border-slate-700"
+              placeholder="ASK ABOUT TYRE DEGRADATION AT SPA..."
+              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-white placeholder-on-surface-variant font-mono uppercase tracking-wide transition-all"
               disabled={loading}
             />
-            <Button type="submit" disabled={!input.trim() || loading} className="w-12 px-0">
-              <Send className="w-4 h-4" />
-            </Button>
+            <button 
+              type="submit" 
+              disabled={!input.trim() || loading} 
+              className="w-14 h-12 bg-primary/10 border border-primary/20 rounded-xl hover:bg-primary/20 transition-all flex items-center justify-center text-primary disabled:opacity-30 disabled:hover:bg-primary/10 shrink-0"
+            >
+              <Send className="w-5 h-5" />
+            </button>
           </form>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

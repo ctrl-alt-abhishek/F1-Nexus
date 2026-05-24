@@ -2,35 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Geist:wght@400;600&family=JetBrains+Mono:wght@500&display=swap');
+
 @layer base {
   :root {
-    --background: 222 47% 4%;
-    --foreground: 210 40% 98%;
-    
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 0 84% 60%;
+    --dot-color: rgba(255, 255, 255, 0.05);
+    --dot-bg: #000000;
   }
 
   body {
-    @apply bg-slate-950 text-slate-50 antialiased selection:bg-red-600/30;
-    /* subtle gradient background */
-    background-image: radial-gradient(circle at 50% -20%, #1e1b4b 0%, #020617 50%);
+    background-color: var(--dot-bg);
+    background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
+    background-size: 24px 24px;
     background-attachment: fixed;
+    color: #ffffff;
+    overflow-x: hidden;
+    font-family: 'Geist', sans-serif;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Space Grotesk', sans-serif;
   }
 }
 
 @layer utilities {
-  .glass {
-    @apply bg-slate-900/60 backdrop-blur-md border border-slate-800 shadow-xl;
+  .glass-card {
+    background: rgba(10, 10, 10, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
   }
-  .text-glow {
-    text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+  
+  .sidebar-glass {
+    background: rgba(5, 5, 5, 0.8);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+  }
+
+  .ambient-glow {
+    position: fixed;
+    width: 60vw;
+    height: 60vw;
+    filter: blur(150px);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: -1;
+    border-radius: 50%;
+    transition: transform 0.1s ease-out;
+  }
+
+  .hover-float {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hover-float:hover {
+    transform: translateY(-4px);
+    border-color: rgba(185, 26, 36, 0.4);
+    box-shadow: 0 20px 40px -20px rgba(185, 26, 36, 0.3);
+  }
+
+  .font-space {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
   }
 }
+

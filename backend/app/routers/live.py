@@ -140,8 +140,8 @@ async def live_websocket(websocket: WebSocket):
         logger.info("WebSocket client disconnected")
     except asyncio.CancelledError:
         pass
-    except Exception as exc:
-        logger.warning("WebSocket handler error: %s", exc)
+    except Exception:
+        logger.exception("WebSocket handler error")
     finally:
         keepalive_task.cancel()
         live_worker.unregister_client(queue)

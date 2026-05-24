@@ -106,8 +106,8 @@ class MemorySignalRClient(SignalRClient):
         if isinstance(msg, list) and len(msg) >= 3:
             try:
                 self.callback(msg[0], msg[1], msg[2])
-            except Exception as e:
-                self.logger.error(f"Callback error: {e}")
+            except Exception:
+                self.logger.exception("Callback error during message processing")
 
     def _exit(self):
         if self._connection:
@@ -253,8 +253,8 @@ class LiveTimingWorker:
                     "time": time_str_utc,
                     "session_type": "Race"
                 }
-        except Exception as e:
-            logger.error("Failed to get next race info: %s", e)
+        except Exception:
+            logger.exception("Failed to get next race info")
         return None
 
     # ── Broadcast ─────────────────────────────────────────────────────────────
@@ -305,8 +305,8 @@ class LiveTimingWorker:
                         self._state["active"] = False
             except asyncio.CancelledError:
                 raise
-            except Exception as exc:
-                logger.warning("Session monitor error: %s — retrying in %.0fs", exc, backoff)
+            except Exception:
+                logger.exception("Session monitor error — retrying in %.0fs", backoff)
                 backoff = min(backoff * 2, max_backoff)
 
             await asyncio.sleep(backoff)
@@ -426,8 +426,8 @@ class LiveTimingWorker:
                 driver_rows = db.execute(text("SELECT DISTINCT driver_code FROM laps")).fetchall()
                 driver_codes = sorted([r[0] for r in driver_rows])
                 self._driver_map = {code: idx for idx, code in enumerate(driver_codes)}
-        except Exception as e:
-            logger.warning("Failed to initialize round info for live timing predictions: %s", e)
+        except Exception:
+            logger.exception("Failed to initialize round info for live timing predictions")
 
         loop = asyncio.get_event_loop()
 
@@ -480,8 +480,8 @@ class LiveTimingWorker:
             else:
                 logger.info("Real live client finished. SIMULATE_LIVE_TIMING is False, skipping simulation fallback.")
                 return received_messages
-        except Exception as exc:
-            logger.warning("Live timing client disconnected: %s.", exc)
+        except Exception:
+            logger.exception("Live timing client disconnected with error")
             if getattr(settings, "SIMULATE_LIVE_TIMING", False):
                 logger.info("Falling back to simulation.")
                 await self._run_simulation_client()
@@ -541,8 +541,8 @@ class LiveTimingWorker:
                     rnd_id = row[0]
                     rnd_name = row[1]
                     logger.info("Simulation using round data from %s (ID: %d)", rnd_name, rnd_id)
-        except Exception as e:
-            logger.error("Failed to query round for simulation: %s", e)
+        except Exception:
+            logger.exception("Failed to query round for simulation")
             
         if not rnd_id:
             logger.warning("No rounds found in DB for simulation. Running purely synthetic mock.")
@@ -583,8 +583,8 @@ class LiveTimingWorker:
                     round_enc = round_enc_map.get(round_key, 0)
                 else:
                     round_enc = 0
-        except Exception as e:
-            logger.error("Failed to load laps from DB for simulation: %s", e)
+        except Exception:
+            logger.exception("Failed to load laps from DB for simulation")
             await self._run_synthetic_mock()
             return
             

@@ -11,7 +11,9 @@ All LLM calls are run in asyncio.to_thread() since groq/genai clients are synchr
 """
 
 import asyncio
+from collections import defaultdict
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -23,6 +25,26 @@ from app.models.schemas import ChatAnswerSchema, ChatQueryRequest, ChatSuggestio
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+# Thread-safe in-memory sliding window rate limiter (max 10 queries/min)
+_user_query_timestamps: dict[str, list[float]] = defaultdict(list)
+_rate_limiter_lock = asyncio.Lock()
+
+
+async def _check_chat_rate_limit(user_id: str) -> None:
+    async with _rate_limiter_lock:
+        now = time.time()
+        # Keep only queries from the last 60 seconds
+        cutoff = now - 60.0
+        timestamps = [t for t in _user_query_timestamps[user_id] if t > cutoff]
+        _user_query_timestamps[user_id] = timestamps
+        
+        if len(timestamps) >= 10:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Maximum 10 queries per minute."
+            )
+        _user_query_timestamps[user_id].append(now)
 
 # Default suggestions shown to all users (unauthenticated fallback or no followed drivers)
 _DEFAULT_SUGGESTIONS = [
@@ -53,6 +75,8 @@ async def chat_query(
 
     Returns the answer, the generated SQL, row count, and raw data rows.
     """
+    await _check_chat_rate_limit(user["uid"])
+
     question = body.question.strip()
     if not question:
         raise HTTPException(400, "Question cannot be empty")

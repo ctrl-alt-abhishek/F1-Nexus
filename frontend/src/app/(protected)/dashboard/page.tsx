@@ -132,46 +132,48 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-100">Welcome to the Grid</h1>
-        <p className="text-slate-400 mt-2">Here&apos;s your personal telemetry overview for the {CURRENT_YEAR} season.</p>
+        <h1 className="text-4xl font-bold tracking-tight text-on-surface font-space">Welcome to the Grid</h1>
+        <p className="text-on-surface-variant mt-2 text-md">Here&apos;s your personal telemetry overview for the {CURRENT_YEAR} season.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="glass">
+        <Card className="glass-card hover-float">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Next Race</CardTitle>
-            <Clock className="h-4 w-4 text-slate-400" />
+            <CardTitle className="text-xs font-bold font-mono uppercase tracking-widest text-on-surface-variant">Next Race</CardTitle>
+            <Clock className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             {displayRace ? (
               <>
-                <div className="text-2xl font-bold">{displayRace.name}</div>
-                <p className="text-xs text-slate-400 mt-1">
+                <div className="text-2xl font-bold font-space tracking-tight text-white">{displayRace.name}</div>
+                <p className="text-xs text-on-surface-variant mt-1 font-mono uppercase tracking-wider">
                   {displayRace.location}{displayRace.country ? `, ${displayRace.country}` : ''}
                 </p>
                 <div className="mt-4 flex gap-2">
-                  <Badge variant={liveStatus?.active ? "destructive" : "outline"}>
+                  <Badge className="font-mono text-[9px] uppercase tracking-wider bg-primary/20 text-primary border border-primary/30">
                     {displayRace.date}
                   </Badge>
-                  <Badge variant="secondary">{displayRace.round}</Badge>
+                  <Badge className="font-mono text-[9px] uppercase tracking-wider bg-white/5 text-on-surface-variant border border-white/10">
+                    {displayRace.round}
+                  </Badge>
                 </div>
               </>
             ) : (
-              <div className="text-slate-500">Loading...</div>
+              <div className="text-on-surface-variant font-mono text-sm">Loading...</div>
             )}
           </CardContent>
         </Card>
 
-        <Card className={`glass border-slate-800 ${liveStatus?.active ? "border-emerald-500/20" : ""}`}>
+        <Card className={`glass-card hover-float ${liveStatus?.active ? "border-primary/40 shadow-lg shadow-primary/10" : ""}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Live Status</CardTitle>
-            <ActivityIcon className={`h-4 w-4 ${liveStatus?.active ? "text-emerald-500 animate-pulse" : "text-slate-500"}`} />
+            <CardTitle className="text-xs font-bold font-mono uppercase tracking-widest text-on-surface-variant">Live Status</CardTitle>
+            <ActivityIcon className={`h-4 w-4 ${liveStatus?.active ? "text-primary animate-pulse" : "text-on-surface-variant"}`} />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${liveStatus?.active ? "text-emerald-400" : "text-slate-300"}`}>
+            <div className={`text-2xl font-bold font-space ${liveStatus?.active ? "text-primary" : "text-white"}`}>
               {liveStatus?.active ? "Active" : "Offline"}
             </div>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-on-surface-variant mt-1 font-mono uppercase tracking-wider">
               {liveStatus?.active 
                 ? `${liveStatus.race_name || "Race"} - Lap ${liveStatus.current_lap || 0}`
                 : "No active session"
@@ -179,17 +181,17 @@ export default function DashboardPage() {
             </p>
             <Link 
               href="/live" 
-              className={`text-xs mt-4 inline-block font-medium ${liveStatus?.active ? "text-emerald-400 hover:text-emerald-300" : "text-red-500 hover:text-red-400"}`}
+              className={`text-xs mt-4 inline-block font-mono font-bold uppercase tracking-wider ${liveStatus?.active ? "text-primary hover:underline" : "text-on-surface-variant hover:text-white"}`}
             >
               Open Race Tower &rarr;
             </Link>
           </CardContent>
         </Card>
 
-        <Card className="glass md:col-span-2">
+        <Card className="glass-card hover-float md:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-500" />
+            <CardTitle className="text-xs font-bold font-mono uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-primary" />
               Championship Predictor {CURRENT_YEAR}
             </CardTitle>
           </CardHeader>
@@ -197,40 +199,42 @@ export default function DashboardPage() {
             {loading ? (
               <div className="flex justify-center py-4"><Spinner size="sm" /></div>
             ) : error && !predictions ? (
-              <div className="text-sm text-red-400 flex items-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>
+              <div className="text-xs font-mono uppercase tracking-wider text-primary flex items-center gap-2">
+                <AlertCircle className="w-4 h-4"/> {error}
+              </div>
             ) : predictions ? (
               <div className="space-y-4 mt-2">
                 {predictions.drivers.slice(0, 3).map((d, i) => (
                   <div key={d.driver_code} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className={`font-bold w-4 text-center ${i === 0 ? "text-amber-500" : i === 1 ? "text-slate-300" : "text-amber-700"}`}>
+                      <span className={`font-mono font-bold w-4 text-center ${i === 0 ? "text-primary" : "text-on-surface-variant"}`}>
                         {i + 1}
                       </span>
                       <div>
-                        <span className="font-semibold text-slate-200">{d.driver_code}</span>
-                        {d.full_name && <span className="text-xs text-slate-500 ml-2">{d.full_name}</span>}
+                        <span className="font-bold text-white font-mono">{d.driver_code}</span>
+                        {d.full_name && <span className="text-xs text-on-surface-variant ml-2 font-space">{d.full_name}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-sm text-slate-400">{d.expected_final_points.toFixed(0)} pts</span>
-                      <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <span className="text-xs font-mono text-on-surface-variant">{d.expected_final_points.toFixed(0)} pts</span>
+                      <div className="w-24 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
                         <div 
-                          className="h-full bg-red-600 rounded-full" 
+                          className="h-full bg-primary rounded-full" 
                           style={{ width: `${d.championship_probability * 100}%` }}
                         />
                       </div>
-                      <span className="text-sm font-medium w-12 text-right">
+                      <span className="text-xs font-mono font-bold text-primary w-12 text-right">
                         {(d.championship_probability * 100).toFixed(1)}%
                       </span>
                     </div>
                   </div>
                 ))}
-                <div className="text-xs text-slate-600 mt-2">
+                <div className="text-[10px] font-mono text-on-surface-variant/50 uppercase tracking-widest mt-2">
                   Based on {predictions.simulations_run.toLocaleString()} Monte Carlo simulations
                 </div>
               </div>
             ) : null}
-            <Link href="/predictions" className="text-xs text-slate-400 hover:text-slate-300 mt-6 inline-block">
+            <Link href="/predictions" className="text-xs text-on-surface-variant hover:text-white mt-6 inline-block font-mono font-bold uppercase tracking-wider">
               View full championship forecast &rarr;
             </Link>
           </CardContent>
@@ -238,33 +242,33 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="glass">
+        <Card className="glass-card hover-float">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-red-500" />
+            <CardTitle className="text-lg font-bold font-space flex items-center gap-2 text-white">
+              <Sparkles className="h-5 w-5 text-primary" />
               Nexus AI
             </CardTitle>
-            <CardDescription>Ask F1 strategy, telemetry, and history questions</CardDescription>
+            <CardDescription className="text-on-surface-variant text-xs font-mono uppercase tracking-wider">Ask F1 strategy, telemetry, and history questions</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-on-surface-variant leading-relaxed">
               Nexus AI uses RAG (Retrieval-Augmented Generation) to query the telemetry database directly. 
               Ask about tyre degradation, sector times, pit strategy, and more.
             </p>
-            <Link href="/chat" className="inline-flex items-center gap-2 text-sm text-red-500 hover:text-red-400 font-medium">
+            <Link href="/chat" className="inline-flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-primary hover:underline">
               <Sparkles className="w-4 h-4" />
               Start a conversation &rarr;
             </Link>
           </CardContent>
         </Card>
 
-        <Card className="glass">
+        <Card className="glass-card hover-float">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Flag className="h-5 w-5 text-slate-400" />
+            <CardTitle className="text-lg font-bold font-space flex items-center gap-2 text-white">
+              <Flag className="h-5 w-5 text-primary" />
               Recent Races
             </CardTitle>
-            <CardDescription>Latest race results</CardDescription>
+            <CardDescription className="text-on-surface-variant text-xs font-mono uppercase tracking-wider">Latest race results</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -272,20 +276,31 @@ export default function DashboardPage() {
                 <Link 
                   key={r.id} 
                   href={`/races/${r.season_year}/${r.round_number}`} 
-                  className="flex items-center justify-between p-3 rounded-md hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-700"
+                  className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-primary/30 transition-all group"
                 >
                   <div>
-                    <div className="text-sm font-medium text-slate-200">Round {r.round_number}</div>
-                    <div className="text-xs text-slate-400">{r.name || 'TBC'}</div>
+                    <div className="text-xs font-bold font-mono uppercase tracking-wider text-primary">Round {r.round_number}</div>
+                    <div className="text-sm font-bold text-white font-space mt-1 group-hover:text-primary transition-colors">{r.name || 'TBC'}</div>
                   </div>
                   {r.race_date && (
-                    <Badge variant="outline">
-                      {new Date(r.race_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    <Badge className="font-mono text-[9px] uppercase tracking-wider bg-white/5 text-on-surface-variant border border-white/10">
+                      {(() => {
+                        try {
+                          const parts = r.race_date.split('-');
+                          if (parts.length === 3) {
+                            const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                            return dateObj.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+                          }
+                          return r.race_date;
+                        } catch {
+                          return r.race_date;
+                        }
+                      })()}
                     </Badge>
                   )}
                 </Link>
               )) : (
-                <div className="text-sm text-slate-500">No race data loaded yet.</div>
+                <div className="text-sm font-mono text-on-surface-variant">No race data loaded yet.</div>
               )}
             </div>
           </CardContent>
