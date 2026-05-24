@@ -1,0 +1,21 @@
+[
+  {
+    "model_type": "degradation",
+    "rmse": 1.2874937533722188,
+    "mae": 0.9602090638386453,
+    "r2": 0.9834617896302241,
+    "rows": 47606,
+    "artifact_path": "D:\\ML Project\\f1_degradation_app\\backend\\models\\degradation.joblib",
+    "trained_at": "2026-05-12T06:28:05.891931+00:00"
+  },
+  {
+    "model_type": "strategy",
+    "roc_auc": 0.6860071013557134,
+    "f1": 0.07237375101269242,
+    "precision": 0.038494685435219764,
+    "recall": 0.6036036036036037,
+    "rows": 47578,
+    "artifact_path": "D:\\ML Project\\f1_degradation_app\\backend\\models\\strategy.joblib",
+    "trained_at": "2026-05-12T06:28:06.873383+00:00"
+  }
+]

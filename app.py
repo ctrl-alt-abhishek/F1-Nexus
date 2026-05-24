@@ -1,12 +1,11 @@
 """
-app.py — Streamlit entry point for the F1 Lap Time Degradation Analyzer.
+app.py - Streamlit entry point for the F1 Lap Time Degradation Analyzer.
 """
 
 import sys
 import os
 import base64
 
-# Ensure app root is on the Python path so subpackages import correctly
 sys.path.insert(0, os.path.dirname(__file__))
 
 import streamlit as st
@@ -20,11 +19,7 @@ from model.train import train_model
 from model.predict import predict_stint, build_degradation_curve
 
 
-# ──────────────────────────────────────────────
-# Helpers
-# ──────────────────────────────────────────────
 def _font_face(name, filename, weight="normal", style="normal"):
-    """Generate a CSS @font-face block for a local font file."""
     font_path = os.path.join(os.path.dirname(__file__), "assets", "fonts", filename)
     with open(font_path, "rb") as f:
         font_b64 = base64.b64encode(f.read()).decode()
@@ -38,25 +33,18 @@ def _font_face(name, filename, weight="normal", style="normal"):
 
 
 def _logo_html():
-    """Return an <img> tag with the embedded F1 logo."""
     logo_path = os.path.join(os.path.dirname(__file__), "assets", "f1_logo.png")
     with open(logo_path, "rb") as f:
         logo_b64 = base64.b64encode(f.read()).decode()
     return f'<img src="data:image/png;base64,{logo_b64}" style="height:48px;">'
 
 
-# ──────────────────────────────────────────────
-# Page config
-# ──────────────────────────────────────────────
 st.set_page_config(
     page_title="F1 Lap Time Degradation Analyzer",
     page_icon="🏎️",
     layout="wide",
 )
 
-# ──────────────────────────────────────────────
-# Custom CSS — F1 Design Language
-# ──────────────────────────────────────────────
 _font_css = "".join([
     _font_face("Formula1", "Formula1-Regular-1.ttf", "400", "normal"),
     _font_face("Formula1", "Formula1-Bold-4.ttf", "700", "normal"),
@@ -68,18 +56,15 @@ st.markdown(f"""
 <style>
 {_font_css}
 
-/* ── Global ── */
 html, body, [class*="st-"] {{
     font-family: 'Formula1', sans-serif !important;
     font-weight: 400;
 }}
 
-/* ── Main background ── */
 .stApp {{
     background-color: #000000;
 }}
 
-/* ── Headings ── */
 h1, h2, h3, h4, h5, h6,
 .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {{
     font-family: 'Formula1', sans-serif !important;
@@ -88,7 +73,6 @@ h1, h2, h3, h4, h5, h6,
     letter-spacing: 0.5px;
 }}
 
-/* ── Captions / help text ── */
 .stCaption, .stMarkdown small, .stTooltipIcon,
 div[data-testid="stCaptionContainer"] p {{
     font-family: 'Formula1', sans-serif !important;
@@ -96,7 +80,6 @@ div[data-testid="stCaptionContainer"] p {{
     color: #A0A0A0 !important;
 }}
 
-/* ── Sidebar ── */
 section[data-testid="stSidebar"] {{
     background-color: #0A0A0A !important;
     border-right: 2px solid #E10600;
@@ -107,7 +90,6 @@ section[data-testid="stSidebar"] h3 {{
     color: #E10600 !important;
 }}
 
-/* ── Buttons ── */
 .stButton > button {{
     background-color: #E10600 !important;
     color: #FFFFFF !important;
@@ -125,7 +107,6 @@ section[data-testid="stSidebar"] h3 {{
     transform: translateY(-1px);
 }}
 
-/* ── Metrics ── */
 div[data-testid="stMetric"] {{
     background: linear-gradient(135deg, #0A0A0A 0%, #111111 100%);
     border: 1px solid #222;
@@ -153,19 +134,16 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
     line-height: 1.3;
 }}
 
-/* ── Selectbox / Multiselect ── */
 div[data-baseweb="select"] {{
     font-family: 'Formula1', sans-serif !important;
 }}
 
-/* ── Dividers ── */
 hr {{
     border: none;
     height: 1px;
     background: linear-gradient(90deg, #E10600, #333, transparent);
 }}
 
-/* ── Header bar ── */
 .f1-header {{
     display: flex;
     align-items: center;
@@ -188,7 +166,6 @@ hr {{
     margin-top: 2px;
 }}
 
-/* ── Race info card ── */
 .race-banner {{
     background: linear-gradient(135deg, #0A0A0A 0%, #111111 100%);
     border: 1px solid #222;
@@ -207,7 +184,6 @@ hr {{
     font-size: 0.85rem;
 }}
 
-/* ── Section headers ── */
 .section-header {{
     font-family: 'Formula1', sans-serif;
     font-weight: 700;
@@ -218,12 +194,10 @@ hr {{
     margin: 24px 0 8px 0;
 }}
 
-/* ── Hide default Streamlit header/footer ── */
 header[data-testid="stHeader"] {{
     background: #000000 !important;
 }}
 
-/* ── Mobile responsiveness ── */
 @media (max-width: 768px) {{
     .f1-header {{
         flex-direction: column;
@@ -251,8 +225,6 @@ header[data-testid="stHeader"] {{
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {{
         font-size: 0.95rem !important;
     }}
-
-    /* Stack columns vertically on mobile */
     div[data-testid="stHorizontalBlock"] {{
         flex-direction: column !important;
     }}
@@ -261,9 +233,6 @@ header[data-testid="stHeader"] {{
 """, unsafe_allow_html=True)
 
 
-# ──────────────────────────────────────────────
-# Header with F1 logo
-# ──────────────────────────────────────────────
 st.markdown(f"""
 <div class="f1-header">
     {_logo_html()}
@@ -275,26 +244,18 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
-# ──────────────────────────────────────────────
-# Cached data loader
-# ──────────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
 def load_session_cached(year: int, round_number: int):
-    """Load and cache the FastF1 session object."""
     return get_session(year, round_number)
 
 
 @st.cache_data(show_spinner=False)
 def load_data(year: int, round_number: int):
-    """Load session and return cleaned laps DataFrame."""
     session = load_session_cached(year, round_number)
     laps = get_race_laps(session)
     return laps
 
 
-# ──────────────────────────────────────────────
-# Chart template matching F1 design language
-# ──────────────────────────────────────────────
 F1_CHART_TEMPLATE = go.layout.Template(
     layout=go.Layout(
         paper_bgcolor="#000000",
@@ -322,9 +283,6 @@ F1_CHART_TEMPLATE = go.layout.Template(
 )
 
 
-# ──────────────────────────────────────────────
-# Sidebar controls
-# ──────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### CONTROLS")
     st.caption("Select a race weekend, then load and analyze the data.")
@@ -342,7 +300,6 @@ with st.sidebar:
         help="Each season has approximately 22 races numbered in calendar order.",
     )
 
-    # We need to load data first to populate the driver selector
     if "laps_df" in st.session_state and st.session_state.get("loaded_key") == (
         season,
         round_num,
@@ -362,22 +319,16 @@ with st.sidebar:
 
     load_btn = st.button("LOAD & TRAIN", type="primary", use_container_width=True)
 
-# ──────────────────────────────────────────────
-# Main logic
-# ──────────────────────────────────────────────
 if load_btn:
     with st.spinner("Loading race data and training model..."):
-        # ── Step 1: Load data ──
         laps_df = load_data(season, round_num)
         st.session_state["laps_df"] = laps_df
         st.session_state["loaded_key"] = (season, round_num)
 
-        # ── Step 1b: Extract race info ──
         session_obj = load_session_cached(season, round_num)
         race_info = get_race_info(session_obj)
         st.session_state["race_info"] = race_info
 
-        # ── Step 2: Filter by selected drivers (if any) ──
         if drivers:
             laps_df = laps_df[laps_df["Driver"].isin(drivers)].reset_index(drop=True)
 
@@ -385,26 +336,19 @@ if load_btn:
             st.error("No valid laps found after filtering. Try different settings.")
             st.stop()
 
-        # ── Step 3: Feature engineering ──
         X, y = build_features(laps_df)
         st.write(f"Feature matrix: **{X.shape[0]}** laps, **{X.shape[1]}** features")
 
-        # ── Step 4: Train model ──
         results = train_model(X, y)
 
-        # Store results in session state for persistence
         st.session_state["results"] = results
         st.session_state["X"] = X
         st.session_state["y"] = y
         st.session_state["filtered_laps"] = laps_df
 
-    # Force a rerun so driver selector populates on first load
     if not drivers:
         st.rerun()
 
-# ──────────────────────────────────────────────
-# Display results (from session state)
-# ──────────────────────────────────────────────
 if "results" in st.session_state:
     results = st.session_state["results"]
     model = results["model"]
@@ -415,7 +359,6 @@ if "results" in st.session_state:
     y = st.session_state["y"]
     laps_df = st.session_state["filtered_laps"]
 
-    # ── Race Info Card ──
     if "race_info" in st.session_state:
         info = st.session_state["race_info"]
         st.markdown(f"""
@@ -430,26 +373,24 @@ if "results" in st.session_state:
         c2.metric("POLE POSITION", info["pole_sitter"])
         c3.metric("FASTEST LAP", info["fastest_lap"])
 
-    # ── Model Accuracy ──
     st.markdown("---")
     st.markdown('<div class="section-header">MODEL ACCURACY</div>', unsafe_allow_html=True)
     st.caption(
         "How close the model's predictions are to the actual lap times. "
-        "Both values are in seconds — lower is better."
+        "Both values are in seconds - lower is better."
     )
     col1, col2 = st.columns(2)
     col1.metric(
         "RMSE",
         f"{rmse:.3f} s",
-        help="Root Mean Squared Error — average prediction error, penalizing larger mistakes more.",
+        help="Root Mean Squared Error - average prediction error, penalizing larger mistakes more.",
     )
     col2.metric(
         "MAE",
         f"{mae:.3f} s",
-        help="Mean Absolute Error — average prediction error in seconds.",
+        help="Mean Absolute Error - average prediction error in seconds.",
     )
 
-    # ── Predicted vs Actual chart ──
     st.markdown('<div class="section-header">PREDICTED vs ACTUAL LAP TIMES</div>', unsafe_allow_html=True)
     st.caption(
         "Dots are real lap times from the race. Lines are model predictions. "
@@ -476,7 +417,6 @@ if "results" in st.session_state:
             )
             stint_label = f"{driver} S{int(stint)}"
 
-            # Actual (scatter)
             fig_pred.add_trace(
                 go.Scatter(
                     x=stint_data["LapNumber"],
@@ -488,7 +428,6 @@ if "results" in st.session_state:
                 )
             )
 
-            # Predicted (line)
             fig_pred.add_trace(
                 go.Scatter(
                     x=stint_data["LapNumber"],
@@ -508,7 +447,6 @@ if "results" in st.session_state:
     )
     st.plotly_chart(fig_pred, use_container_width=True)
 
-    # ── Degradation curve chart ──
     st.markdown('<div class="section-header">TIRE DEGRADATION CURVES</div>', unsafe_allow_html=True)
     st.caption(
         "Predicted lap time vs tire age. An upward slope means slower laps as tires wear. "
@@ -563,7 +501,6 @@ if "results" in st.session_state:
     )
     st.plotly_chart(fig_deg, use_container_width=True)
 
-    # ── Feature importance chart ──
     st.markdown('<div class="section-header">FEATURE IMPORTANCE</div>', unsafe_allow_html=True)
     st.caption(
         "Which input variables the model relies on most. "

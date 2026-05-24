@@ -1,94 +1,117 @@
-# 🏎️ F1 Lap Time Degradation Analyzer
+# 🏎️ F1 Nexus: Live Telemetry, Tyre Degradation & Strategy Predictor
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)](https://python.org)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
+[![Next.js](https://img.shields.io/badge/Next.js-14.2-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![XGBoost](https://img.shields.io/badge/XGBoost-2.0+-orange?logo=xgboost)](https://xgboost.readthedocs.io)
-[![FastF1](https://img.shields.io/badge/FastF1-3.3+-E10600)](https://docs.fastf1.dev)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![FastF1](https://img.shields.io/badge/FastF1-3.4+-E10600)](https://docs.fastf1.dev)
 
-ML-powered F1 tire degradation analyzer — predicts lap time decay using real race data from FastF1, built with Streamlit, XGBoost, and Plotly. Styled with official F1 branding.
+F1 Nexus is a premium, real-time Formula 1 telemetry visualizer and strategy forecaster. It utilizes machine learning models trained on millions of laps to predict tyre degradation and recommend optimal pit windows during a live Grand Prix weekend.
 
 ---
 
-## Features
+## 🌟 Key Modules & Features
 
-- **Real F1 Data** — Pulls official lap-by-lap timing data from any race (2022–2025) via the FastF1 API
-- **ML Predictions** — Trains an XGBoost regression model to predict lap times based on tire age, compound, fuel load, and more
-- **Interactive Charts** — Plotly-powered visualizations: predicted vs actual lap times, tire degradation curves, and feature importance
-- **Race Info** — Displays race name, date, winner, pole sitter, and fastest lap automatically
-- **F1 Design Language** — Pure black OLED-optimized theme with Formula1 typography and official branding
-- **Mobile Responsive** — Works on desktop and mobile browsers
+### 1. **Live Race Tower**
+- **Real-Time Telemetry**: Broadcasts live sector times, gaps, tyre compound, and tyre age directly from F1's live timing server.
+- **ML Stint End Predictor (`Est Stop`)**: Runs our custom XGBoost degradation model on incoming telemetry to recommend the exact lap a driver should pit.
+- **Graceful Off-Hours Fallback**: During off-hours, the live tower automatically transitions to a high-fidelity replay simulation (using the 2024 Canadian GP data) after a 15-second timeout.
+- **Dynamic Header & Metadata**: Automatically adapts to show live session name, location, and lap number when active.
 
-## Tech Stack
+### 2. **Upcoming Race Countdown**
+- **IST Localized Scheduling**: Automatically parses upcoming UTC sessions and converts them to Indian Standard Time (IST) (e.g., `May 25, 2026, 01:30 AM IST`), dynamically handling timezone dates.
+- **Telemetry Status Indicator**: Visual status panel detailing connection state to the Live Timing API.
 
-| Layer | Technology |
+### 3. **Interactive Dashboard**
+- **At-A-Glance Overview**: Live status monitor, Next Race tracker, and recent races telemetry cards.
+- **Championship Predictor**: Dynamic Monte Carlo simulation results mapping expected driver final points and title probabilities.
+
+### 4. **Championship Forecast (Monte Carlo)**
+- Runs **10,000 seasonal simulations** in the backend using historical stats, constructor power rankings, and driver variance to calculate championship probability, podium probability, and expected final standing points.
+
+### 5. **Nexus AI (RAG Chat)**
+- Natural language interface allowing users to ask questions like *"Compare Verstappen and Leclerc's medium tyre degradation in Montreal"* or *"What was Hamilton's sector 2 delta on lap 32?"*.
+- Converts prompt queries into SQL queries on-the-fly to query our telemetry database directly.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technologies |
 |---|---|
-| Data Source | FastF1 API |
-| ML Model | XGBoost (scikit-learn fallback) |
-| Data Processing | pandas, NumPy |
-| Visualization | Plotly |
-| Frontend | Streamlit |
+| **Frontend** | Next.js 14 (App Router), React, TypeScript, Tailwind CSS, Lucide icons, websockets |
+| **Backend** | FastAPI, Python 3.10+, SQLAlchemy, Uvicorn |
+| **Database** | Neon Serverless PostgreSQL |
+| **ML Engine** | XGBoost Regression, Scikit-learn, Pandas, NumPy |
+| **Data Source** | FastF1 API (SignalR timing client integration) |
+| **Auth & Profiles** | Firebase Auth, Google Sign-In, Cloud Firestore |
 
-## Getting Started
+---
 
-### Prerequisites
-
-- Python 3.10+
-
-### Installation
-
-```bash
-git clone https://github.com/ctrl-alt-abhishek/F1-tyre-degradation-app
-cd F1-tyre-degradation-app
-pip install -r requirements.txt
-```
-
-### Usage
-
-```bash
-streamlit run app.py
-```
-
-1. Select a **Season** and **Round** from the sidebar
-2. Click **LOAD & TRAIN**
-3. Choose drivers from the populated list
-4. Explore the charts and model metrics
-
-
-## Project Structure
+## 📂 Project Structure
 
 ```
 f1_degradation_app/
-├── app.py                  # Streamlit UI entry point
-├── data/
-│   └── loader.py           # FastF1 data fetching + caching
-├── features/
-│   └── engineer.py         # Feature engineering pipeline
-├── model/
-│   ├── train.py            # Model training + evaluation
-│   └── predict.py          # Inference + degradation curves
-├── assets/
-│   ├── fonts/              # Formula1 font files
-│   └── f1_logo.png         # F1 logo
-├── .streamlit/
-│   └── config.toml         # Theme + server config
-├── Procfile                # Render deployment
-├── requirements.txt
+├── backend/
+│   ├── app/
+│   │   ├── ml/                 # XGBoost training & Monte Carlo scripts
+│   │   ├── models/             # SQLAlchemy schemas
+│   │   ├── routers/            # FastAPI WebSocket & REST endpoints
+│   │   └── services/           # Live timing worker (MemorySignalRClient)
+│   ├── .env                    # Backend environment config
+│   └── pyproject.toml          # Poetry package config
+├── frontend/
+│   ├── src/
+│   │   ├── app/                # Next.js pages (/dashboard, /live, /predictions)
+│   │   ├── components/         # Premium glassmorphism UI components
+│   │   └── lib/                # API helpers and Shared WebSocket client
+│   ├── .env.local              # Frontend environment config
+│   └── package.json            # Node dependencies
 └── README.md
 ```
 
-## How It Works
+---
 
-1. **Data Loading** — FastF1 fetches lap-level timing data for the selected race, cached locally to avoid re-downloading
-2. **Cleaning** — Filters out pit laps, safety car periods, and outliers
-3. **Feature Engineering** — Builds 6 features: tire age, compound type, lap number, fuel load proxy, driver identity, stint number
-4. **Training** — XGBoost regressor trained on 80/20 split to predict lap time in seconds
-5. **Visualization** — Predicted vs actual comparison, degradation curves per compound, and feature importance ranking
+## 🚀 Getting Started
 
-## License
+### 1. Backend Setup
 
-This project is for educational purposes.
+1. Navigate to the backend folder:
+   ```bash
+   cd backend
+   ```
+2. Install dependencies:
+   ```bash
+   poetry install
+   ```
+3. Configure your environment variables in `.env` (copy from `.env.example`).
+4. Start the FastAPI server:
+   ```bash
+   .venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+   ```
+
+### 2. Frontend Setup
+
+1. Navigate to the frontend folder:
+   ```bash
+   cd ../frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Configure API and WebSocket URLs in `.env.local`:
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+   NEXT_PUBLIC_WS_URL=ws://localhost:8000/api/v1/live/ws
+   ```
+4. Start the Next.js development server:
+   ```bash
+   npm run dev
+   ```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
 
 ---
 
-*Built with [FastF1](https://docs.fastf1.dev) · [Streamlit](https://streamlit.io) · [XGBoost](https://xgboost.readthedocs.io) · [Plotly](https://plotly.com)*
+*Built with passion for F1 racing and data science.*

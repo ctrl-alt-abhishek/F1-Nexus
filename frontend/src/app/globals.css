@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 4%;
+    --foreground: 210 40% 98%;
+    
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 0 84% 60%;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-50 antialiased selection:bg-red-600/30;
+    /* subtle gradient background */
+    background-image: radial-gradient(circle at 50% -20%, #1e1b4b 0%, #020617 50%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-slate-900/60 backdrop-blur-md border border-slate-800 shadow-xl;
+  }
+  .text-glow {
+    text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+  }
+}
