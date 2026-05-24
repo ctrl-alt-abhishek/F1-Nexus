@@ -45,19 +45,22 @@ def _get_current_standings(db: Session, year: int) -> pd.DataFrame:
 
 def _get_recent_results(db: Session, year: int, last_n: int = 5) -> pd.DataFrame:
     """
-    Get each driver's finishing positions in their last N races of the season.
+    Get each driver's finishing positions in their last N races.
     Used to calibrate per-driver performance distribution.
+    Blends the current season with the previous season (e.g. 2024) to handle
+    early-season prediction instability gracefully.
     """
     result = db.execute(text("""
         SELECT
             rr.driver_code,
             rr.finish_position,
+            r.season_year,
             r.round_number
         FROM race_results rr
         JOIN rounds r ON r.id = rr.round_id
-        WHERE r.season_year = :year
+        WHERE r.season_year <= :year
           AND rr.finish_position IS NOT NULL
-        ORDER BY r.round_number DESC
+        ORDER BY r.season_year DESC, r.round_number DESC
     """), {"year": year})
     df = pd.DataFrame(result.fetchall(), columns=result.keys())
 
@@ -130,17 +133,29 @@ def simulate_season(
 
     # ── Build per-driver performance distribution ─────────────────────────────
     # Mean finishing position from recent results (lower = better)
-    # Drivers with no results get mean=10 (midfield)
+    # Drivers with no results get mean=10.5 (midfield)
     driver_perf = {}
     for driver in drivers:
         d_recent = recent[recent["driver_code"] == driver]["finish_position"]
         if not d_recent.empty:
+            n_obs = len(d_recent)
+            mean_val = float(d_recent.mean())
+            # Regress towards midfield (10.5) with a weight of 3 races
+            # This handles low sample sizes (e.g. at the start of a season or for rookies)
+            prior_weight = 3.0
+            regressed_mean = (mean_val * n_obs + 10.5 * prior_weight) / (n_obs + prior_weight)
+
+            # Estimate standard deviation, fallback to 4.0 if not enough points
+            std_val = float(d_recent.std()) if n_obs > 1 else 4.0
+            if pd.isna(std_val):
+                std_val = 4.0
+
             driver_perf[driver] = {
-                "mean_pos": float(d_recent.mean()),
-                "std_pos": max(float(d_recent.std()), 2.0),
+                "mean_pos": regressed_mean,
+                "std_pos": max(std_val, 3.5), # Minimum standard deviation of 3.5 to model F1 variance
             }
         else:
-            driver_perf[driver] = {"mean_pos": 10.0, "std_pos": 4.0}
+            driver_perf[driver] = {"mean_pos": 10.5, "std_pos": 4.5}
 
     # Profile-based noise scaling
     std_multiplier = {"balanced": 1.0, "aggressive": 1.5, "conservative": 0.7}.get(profile, 1.0)

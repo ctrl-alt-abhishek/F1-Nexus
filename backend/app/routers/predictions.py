@@ -58,7 +58,7 @@ def _cache_set(key: str, data) -> None:
 @router.get("/championship/{year}", response_model=ChampionshipPredictionSchema)
 async def get_championship_prediction(
     year: int,
-    total_rounds: int = Query(24, description="Total rounds in the season"),
+    total_rounds: int | None = Query(None, description="Total rounds in the season"),
     profile: str = Query("balanced", description="balanced | aggressive | conservative"),
     db: Session = Depends(get_db),
 ):
@@ -68,7 +68,13 @@ async def get_championship_prediction(
     Runs 10,000 simulations of the remaining races using each driver's recent
     finishing position distribution. Cached in memory for 1 hour per year+profile.
     """
-    cache_key = f"championship:{year}:{profile}"
+    if total_rounds is None:
+        # Determine total rounds dynamically from database rounds table for this year
+        # Falls back to 24 if no rounds are registered
+        from app.models.sql import Round as SqlRound
+        total_rounds = db.query(SqlRound).filter(SqlRound.season_year == year).count() or 24
+
+    cache_key = f"championship:{year}:{profile}:{total_rounds}"
     cached = _cache_get(cache_key)
 
     if cached is not None:

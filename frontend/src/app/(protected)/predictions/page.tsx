@@ -296,7 +296,14 @@ function RaceWeekendView({
                 <div className="text-xs text-slate-400 mb-1">Race Date</div>
                 <div className="text-2xl font-bold">
                   {nextRace?.race_date
-                    ? new Date(nextRace.race_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+                    ? (() => {
+                        const parts = nextRace.race_date.split('-');
+                        if (parts.length === 3) {
+                          const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                          return dateObj.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+                        }
+                        return nextRace.race_date;
+                      })()
                     : "—"}
                 </div>
               </div>
