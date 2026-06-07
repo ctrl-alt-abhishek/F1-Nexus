@@ -42,7 +42,7 @@ Schema:
 - ml_models(id, name, version, trained_at, artifact_path, metrics)
 
 Rules:
-1. Always filter is_valid = TRUE on the laps table unless the user explicitly asks for all laps.
+1. Always filter is_valid = TRUE on the laps table unless the user explicitly asks for all laps or queries safety cars, Virtual Safety Cars (VSC), red flags, or pit stops (these non-green-flag/outlier laps have is_valid = FALSE in the database).
 2. driver_code is a 3-letter uppercase code (e.g. 'VER', 'NOR', 'LEC').
 3. compound values: 'SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET'.
 4. lap_time_s is in seconds as a float (e.g. 90.234).
@@ -51,17 +51,18 @@ Rules:
 7. NEVER use DELETE, UPDATE, INSERT, DROP, ALTER, TRUNCATE, or any DDL/DML.
 8. Use meaningful column aliases (e.g. AVG(lap_time_s) AS avg_lap_time_s).
 9. When asking about a specific driver by name (e.g. "Verstappen"), use ILIKE on full_name (e.g. d.full_name ILIKE '%Verstappen%').
-10. ALWAYS filter by circuit/location when specified in the question:
-    - The circuits table contains the Grand Prix name in 'name' (e.g. 'British Grand Prix', 'Belgian Grand Prix', 'Monaco Grand Prix') and the track location in 'city' (e.g. 'Silverstone', 'Spa-Francorchamps', 'Monaco', 'Monza').
-    - ALWAYS match circuit locations using ILIKE with wildcards on circuits.name OR circuits.city (e.g. to query "Spa" or "Spa-Francorchamps", use `(c.name ILIKE '%Belgian%' OR c.city ILIKE '%Spa%')`; to query "Silverstone", use `(c.name ILIKE '%British%' OR c.city ILIKE '%Silverstone%')`).
-    - Use simple, unaccented search keywords with wildcards for locations with accents (e.g. use `%Paulo%` for São Paulo, `%Montr%` for Montréal, `%Monaco%` for Monaco, `%Jeddah%` for Jeddah) to avoid matching issues with accented characters.
-11. When filtering by constructor/team (e.g. 'Ferrari', 'Red Bull', 'McLaren'), join laps or results to driver_season and constructors using the constructor_id and season_year (e.g. `JOIN driver_season ds ON ds.driver_code = l.driver_code AND ds.season_year = r.season_year JOIN constructors co ON ds.constructor_id = co.id WHERE co.name ILIKE '%Red Bull%'`).
+10. ALWAYS filter by circuit/location when specified in the question using ILIKE on BOTH circuits.name AND circuits.city using OR. Example: `(c.name ILIKE '%Silverstone%' OR c.city ILIKE '%Silverstone%')`. This is CRITICAL because the name is often "British Grand Prix" while the city is "Silverstone".
+11. When filtering by constructor/team, join laps or results to driver_season and constructors.
 12. For queries comparing "tyre degradation", "degradation curves", or "pace vs tyre life":
-    - If specific drivers are mentioned or implied, select and group by l.driver_code (e.g. `SELECT c.name AS circuit_name, r.season_year, l.driver_code, l.compound, l.tyre_life, AVG(l.lap_time_s) AS avg_lap_time_s FROM laps l JOIN rounds r ON l.round_id = r.id JOIN circuits c ON r.circuit_id = c.id WHERE l.is_valid = TRUE AND l.tyre_life IS NOT NULL GROUP BY c.name, r.season_year, l.driver_code, l.compound, l.tyre_life ORDER BY c.name, r.season_year, l.driver_code, l.compound, l.tyre_life`).
-    - If NO specific drivers are mentioned or implied (e.g. comparing circuits or compounds overall), DO NOT select or group by l.driver_code. Average the lap times across all drivers (i.e. omit driver_code from SELECT, GROUP BY, and ORDER BY) to keep the result set compact and avoid truncation (e.g. `SELECT c.name AS circuit_name, r.season_year, l.compound, l.tyre_life, AVG(l.lap_time_s) AS avg_lap_time_s FROM laps l JOIN rounds r ON l.round_id = r.id JOIN circuits c ON r.circuit_id = c.id WHERE l.is_valid = TRUE AND l.tyre_life IS NOT NULL GROUP BY c.name, r.season_year, l.compound, l.tyre_life ORDER BY c.name, r.season_year, l.compound, l.tyre_life`).
-13. CRITICAL: When the question compares different circuits, years, drivers, or tyre compounds, you MUST select the comparison columns in the SELECT clause (e.g. select c.name, r.season_year, l.driver_code, l.compound) so the LLM can distinguish them. Never omit the compared entities from the query results.
-14. ALWAYS parenthesize OR conditions properly in the WHERE clause. Specifically, if you are filtering for multiple optional items (like two different drivers or two different circuits) using OR, wrap the ENTIRE set of OR conditions in outer parentheses so they are grouped together under the AND filters (e.g. `WHERE l.is_valid = TRUE AND ((c.city = 'Spa' OR c.city = 'Monaco'))` rather than `WHERE l.is_valid = TRUE AND c.city = 'Spa' OR c.city = 'Monaco'`). When comparing multiple entities, use LIMIT 500 instead of 100 so that data for all compared entities is returned.
-15. When comparing circuits, drivers, or teams without a specified season year in the question, default to filtering by the most recent complete season (e.g. `AND r.season_year = 2024`) to keep data size focused and prevent truncation.
+    - If specific drivers are mentioned or implied, select and group by l.driver_code.
+    - If NO specific drivers are mentioned, DO NOT select or group by l.driver_code.
+13. CRITICAL: When the question compares different circuits, years, drivers, or tyre compounds, you MUST select the comparison columns in the SELECT clause.
+14. ALWAYS parenthesize OR conditions properly in the WHERE clause.
+15. When comparing circuits, drivers, or teams without a specified season year in the question, default to filtering by the most recent complete season (e.g. `AND r.season_year = 2024`).
+16. track_status is a string of digit characters representing track conditions. The codes are: '1' = Green flag, '2' = Yellow flag, '4' = Safety Car (SC), '5' = Virtual Safety Car (VSC), '6' = Red flag. To query safety car periods, laps under safety car, or count safety cars, you MUST check if track_status contains '4' or '5'.
+17. CRITICAL: Every column in the SELECT clause that is not an aggregate function MUST be included in the GROUP BY clause. Never select a column and fail to group by it.
+18. When asked for "consistency", "most consistent", or similar, use STDDEV (standard deviation) on lap_time_s or qualifying times (e.g., `STDDEV(q.q1_s)`) and order ascending. Do NOT use SUM or AVG for consistency.
+20. The `race_results`, `qualifying`, and `laps` tables DO NOT have a `season_year` column. You MUST join the `rounds` table (e.g., `JOIN rounds r ON laps.round_id = r.id`) to filter by `season_year`.
 """.strip()
 
 

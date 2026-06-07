@@ -1,0 +1,4 @@
+# Automated UI Testing Rule
+
+- **Continuous Testing:** After EVERY debugging run, bug fix, or significant implementation, you MUST automatically invoke a `browser_subagent` to systematically test the UI (visiting all pages like `/dashboard`, `/live`, `/chat`, `/races`, `/predictions`, `/drivers`).
+- **Autonomous Fixing:** If the `browser_subagent` detects any bugs, regressions, or UI issues during its run, you MUST automatically create an implementation plan and immediately proceed to fix the issues WITHOUT asking for further user permission. Proceed directly to execution.

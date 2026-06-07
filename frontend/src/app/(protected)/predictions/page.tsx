@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart3, TrendingUp, HelpCircle, Zap, Timer, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -93,7 +94,27 @@ export default function PredictionsPage() {
   }, []);
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+    return (
+      <div className="space-y-12 max-w-7xl mx-auto animate-in fade-in duration-500">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <Skeleton className="h-12 w-64 mb-3" />
+            <Skeleton className="h-6 w-96" />
+          </div>
+          <div className="flex gap-1.5">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <Skeleton className="h-[400px] lg:col-span-8" />
+          <div className="lg:col-span-4 space-y-6">
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!data) {
@@ -396,7 +417,9 @@ function RaceWeekendView({
             <h3 className="text-sm font-bold font-space uppercase text-white tracking-wider">Strategy Preview</h3>
           </div>
           <p className="text-xs text-on-surface-variant leading-relaxed font-sans">
-            Strategy predictions will execute once telemetry is processed. Sector times and tyre life telemetry will populate tyre wear profiles automatically.
+            {liveStatus?.active 
+              ? "Live ML strategy models are currently evaluating telemetry streams for stint predictions."
+              : "Strategy predictions are currently idle. Live predictions will execute once the next session begins."}
           </p>
           {nextRace && (
             <a

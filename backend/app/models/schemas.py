@@ -87,6 +87,16 @@ class ConstructorSchema(BaseModel):
 
 # ── Round / Race ─────────────────────────────────────────────────────────────
 
+class RaceResultSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    driver_code: str
+    finish_position: int | None
+    points: float | None
+    status: str | None
+    fastest_lap: bool
+
+
 class RoundSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -96,6 +106,7 @@ class RoundSchema(BaseModel):
     name: str | None
     race_date: date | None
     circuit: CircuitSchema | None
+    race_results: list[RaceResultSchema] = []
 
 
 class LapSchema(BaseModel):
@@ -146,14 +157,7 @@ class RaceAnalysisSchema(BaseModel):
     degradation_curves: dict[str, list[DegradationPointSchema]]  # driver_code -> curve
 
 
-class RaceResultSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
 
-    driver_code: str
-    finish_position: int | None
-    points: float | None
-    status: str | None
-    fastest_lap: bool
 
 
 # ── Qualifying ───────────────────────────────────────────────────────────────

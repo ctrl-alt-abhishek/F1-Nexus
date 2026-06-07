@@ -33,6 +33,21 @@ async def get_me(user: dict = Depends(get_current_user)):
     )
 
 
+@router.get("/profile", response_model=UserProfileSchema)
+async def get_profile_compat(user: dict = Depends(get_current_user)):
+    """Compatibility endpoint for GET /users/profile."""
+    return await get_me(user)
+
+
+@router.put("/profile", response_model=OKResponse)
+async def update_profile_compat(
+    body: UserPreferencesRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Compatibility endpoint for PUT /users/profile."""
+    return await update_preferences(body, user)
+
+
 @router.put("/me/preferences", response_model=OKResponse)
 async def update_preferences(
     body: UserPreferencesRequest,

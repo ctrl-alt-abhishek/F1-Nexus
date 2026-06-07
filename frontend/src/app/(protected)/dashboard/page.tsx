@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { fetchApi } from "@/lib/api";
 import { Trophy, Clock, Flag, TrendingUp, AlertCircle, Sparkles } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
 // Matches backend ChampionshipPredictionSchema
@@ -26,7 +27,11 @@ interface ChampionshipPrediction {
   cached: boolean;
 }
 
-// Matches backend RoundSchema
+interface RaceResult {
+  driver_code: string;
+  finish_position: number | null;
+}
+
 interface RoundInfo {
   id: number;
   season_year: number;
@@ -34,6 +39,7 @@ interface RoundInfo {
   name: string | null;
   race_date: string | null;
   circuit: { name: string; country: string | null; city: string | null } | null;
+  race_results?: RaceResult[];
 }
 
 interface LiveStatus {
@@ -87,19 +93,20 @@ export default function DashboardPage() {
     loadData();
   }, []);
 
-  // Get the last 3 rounds for "Recent Races"
-  const recentRounds = rounds.slice(-3).reverse();
+  // Filter for completed rounds and get the last 3 for "Recent Races"
+  const now = new Date();
+  const completedRounds = rounds.filter(r => r.race_date && new Date(r.race_date) < now);
+  const recentRounds = completedRounds.slice(-3).reverse();
 
   // Find the next upcoming race (future date) or fallback to the last round
-  const now = new Date();
-  const nextRace = rounds.find(r => r.race_date && new Date(r.race_date) > now) || rounds[rounds.length - 1];
+  const nextRace = rounds.find(r => r.race_date && new Date(r.race_date) >= now) || rounds[rounds.length - 1];
 
   const displayRace = liveStatus?.active 
     ? {
-        name: liveStatus.race_name || "Canadian Grand Prix",
-        location: liveStatus.location || "Montréal",
-        country: liveStatus.country || "Canada",
-        round: liveStatus.current_lap ? `Lap ${liveStatus.current_lap}` : "Round 5",
+        name: liveStatus.race_name || "Unknown Event",
+        location: liveStatus.location || "",
+        country: liveStatus.country || "",
+        round: liveStatus.current_lap ? `Lap ${liveStatus.current_lap}` : "Active Session",
         date: "LIVE NOW"
       }
     : liveStatus?.next_race 
@@ -128,6 +135,26 @@ export default function DashboardPage() {
               : "TBC"
           }
         : null;
+
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div>
+          <Skeleton className="h-10 w-64 mb-2" />
+          <Skeleton className="h-5 w-96" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32 md:col-span-2" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-48" />
+          <Skeleton className="h-48" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -272,34 +299,53 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentRounds.length > 0 ? recentRounds.map(r => (
-                <Link 
-                  key={r.id} 
-                  href={`/races/${r.season_year}/${r.round_number}`} 
-                  className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-primary/30 transition-all group"
-                >
-                  <div>
-                    <div className="text-xs font-bold font-mono uppercase tracking-wider text-primary">Round {r.round_number}</div>
-                    <div className="text-sm font-bold text-white font-space mt-1 group-hover:text-primary transition-colors">{r.name || 'TBC'}</div>
-                  </div>
-                  {r.race_date && (
-                    <Badge className="font-mono text-[9px] uppercase tracking-wider bg-white/5 text-on-surface-variant border border-white/10">
-                      {(() => {
-                        try {
-                          const parts = r.race_date.split('-');
-                          if (parts.length === 3) {
-                            const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-                            return dateObj.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-                          }
-                          return r.race_date;
-                        } catch {
-                          return r.race_date;
-                        }
-                      })()}
-                    </Badge>
-                  )}
-                </Link>
-              )) : (
+              {recentRounds.length > 0 ? recentRounds.map(r => {
+                const podium = r.race_results
+                  ?.filter(res => res.finish_position && res.finish_position >= 1 && res.finish_position <= 3)
+                  .sort((a, b) => (a.finish_position || 99) - (b.finish_position || 99));
+
+                return (
+                  <Link 
+                    key={r.id} 
+                    href={`/races/${r.season_year}/${r.round_number}`} 
+                    className="block p-4 rounded-xl bg-white/5 border border-white/5 hover:border-primary/30 transition-all group"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <div className="text-xs font-bold font-mono uppercase tracking-wider text-primary">Round {r.round_number}</div>
+                        <div className="text-sm font-bold text-white font-space mt-1 group-hover:text-primary transition-colors">{r.name || 'TBC'}</div>
+                      </div>
+                      {r.race_date && (
+                        <Badge className="font-mono text-[9px] uppercase tracking-wider bg-white/5 text-on-surface-variant border border-white/10 shrink-0">
+                          {(() => {
+                            try {
+                              const parts = r.race_date.split('-');
+                              if (parts.length === 3) {
+                                const dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                                return dateObj.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+                              }
+                              return r.race_date;
+                            } catch {
+                              return r.race_date;
+                            }
+                          })()}
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    {podium && podium.length > 0 && (
+                      <div className="flex items-center gap-3 pt-3 border-t border-white/5">
+                        {podium.map((p, idx) => (
+                          <div key={p.driver_code} className="flex items-center gap-1.5">
+                            <span className={`text-[10px] font-bold font-mono ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-slate-300' : 'text-amber-600'}`}>P{p.finish_position}</span>
+                            <span className="text-xs font-bold text-white font-mono">{p.driver_code}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Link>
+                );
+              }) : (
                 <div className="text-sm font-mono text-on-surface-variant">No race data loaded yet.</div>
               )}
             </div>

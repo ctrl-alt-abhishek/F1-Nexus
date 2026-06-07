@@ -95,11 +95,17 @@ app.include_router(users.router, prefix="/api/v1")
 
 # ── Health check ──────────────────────────────────────────────────────────────
 
+from fastapi import FastAPI, HTTPException
+
+# ... existing code ...
+
 @app.get("/health", tags=["health"])
 async def health_check():
     """
-    Unauthenticated health endpoint.
-    Used by GitHub Actions keep-alive cron to prevent Render cold starts.
-    Must return 200 in under 100ms - no DB queries, no external calls.
+    Health endpoint used by GitHub Actions keep-alive cron.
+    Verifies database connectivity.
     """
-    return {"status": "ok"}
+    from app.database import check_db_connection
+    if check_db_connection():
+        return {"status": "ok"}
+    raise HTTPException(status_code=503, detail="Database unavailable")

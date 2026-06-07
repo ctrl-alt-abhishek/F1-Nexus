@@ -13,7 +13,7 @@ import asyncio
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.schemas import (
@@ -42,6 +42,10 @@ async def list_rounds(
         return (
             db.query(Round)
             .filter(Round.season_year == year)
+            .options(
+                joinedload(Round.circuit),
+                joinedload(Round.race_results)
+            )
             .order_by(Round.round_number)
             .all()
         )
@@ -97,7 +101,7 @@ async def get_race_analysis(
     total_laps = max((lap.lap_number for lap in laps if lap.lap_number), default=0)
 
     # Tire stints — synchronous, CPU-only
-    tire_stints = _build_tire_stints(laps)
+    tire_stints = build_tire_stints(laps)
 
     # Degradation curves — for top 3 finishers only
     top3_codes = [
@@ -120,7 +124,7 @@ async def get_race_analysis(
                 continue
             # Run model inference in thread (XGBoost predict is blocking)
             curves = await asyncio.to_thread(
-                _build_driver_curves, driver_laps, total_laps
+                build_driver_curves, driver_laps, total_laps
             )
             if curves:
                 degradation_curves[driver_code] = curves
@@ -188,106 +192,4 @@ async def get_laps(
     return PaginatedLapsSchema(items=items, total=total, page=page, page_size=page_size)
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _build_tire_stints(laps: list[Lap]) -> list[TireStintSchema]:
-    """
-    Group laps by (driver_code, stint) to build tire strategy bar data.
-    Returns a list sorted by (driver, stint).
-    """
-    stints: dict[tuple, dict] = {}
-
-    for lap in laps:
-        if lap.stint is None or lap.lap_number is None:
-            continue
-        key = (lap.driver_code, lap.stint)
-        if key not in stints:
-            stints[key] = {
-                "driver_code": lap.driver_code,
-                "stint": lap.stint,
-                "compound": lap.compound or "UNKNOWN",
-                "start_lap": lap.lap_number,
-                "end_lap": lap.lap_number,
-            }
-        else:
-            stints[key]["end_lap"] = max(stints[key]["end_lap"], lap.lap_number)
-
-    result = [
-        TireStintSchema(
-            driver_code=d["driver_code"],
-            stint=d["stint"],
-            compound=d["compound"],
-            start_lap=d["start_lap"],
-            end_lap=d["end_lap"],
-            lap_count=d["end_lap"] - d["start_lap"] + 1,
-        )
-        for d in stints.values()
-    ]
-    result.sort(key=lambda x: (x.driver_code, x.stint))
-    return result
-
-
-def _build_driver_curves(
-    driver_laps: list[Lap],
-    total_laps: int,
-) -> list[DegradationPointSchema]:
-    """
-    Build predicted vs actual degradation curve for a single driver.
-
-    Picks the driver's longest stint, runs build_degradation_curve() on it,
-    and pairs each predicted point with the actual lap time at that tire age.
-
-    round_enc=0 is used (unknown circuit) — the model was trained on round_enc
-    as a categorical identifier but 0 is a valid fallback for inference.
-    """
-    from app.ml.degradation.predict import build_degradation_curve
-
-    # Group laps by stint
-    stints: dict[int, list[Lap]] = defaultdict(list)
-    for lap in driver_laps:
-        if lap.stint is not None:
-            stints[lap.stint].append(lap)
-
-    if not stints:
-        return []
-
-    # Use the longest stint
-    longest = max(stints, key=lambda s: len(stints[s]))
-    stint_laps = sorted(stints[longest], key=lambda l: l.lap_number or 0)
-
-    compound = stint_laps[0].compound or "MEDIUM"
-    max_tire_age = len(stint_laps)
-    lap_start = stint_laps[0].lap_number or 1
-
-    # Actual lap times keyed by tyre_life
-    actual_by_age: dict[int, float] = {
-        lap.tyre_life: lap.lap_time_s
-        for lap in stint_laps
-        if lap.tyre_life is not None and lap.lap_time_s is not None
-    }
-
-    try:
-        curve_df = build_degradation_curve(
-            model=models.degradation,
-            compound=compound,
-            max_tire_age=max_tire_age,
-            driver_enc=0,
-            stint=longest,
-            lap_start=lap_start,
-            total_laps=total_laps,
-            round_enc=0,  # Inference with unknown circuit — acceptable fallback
-        )
-    except Exception:
-        return []
-
-    if curve_df is None or curve_df.empty or "tire_age" not in curve_df.columns or "predicted_lap_time_s" not in curve_df.columns:
-        return []
-
-    return [
-        DegradationPointSchema(
-            tire_age=int(row["tire_age"]),
-            predicted_lap_time_s=float(row["predicted_lap_time_s"]),
-            actual_lap_time_s=actual_by_age.get(int(row["tire_age"])),
-        )
-        for _, row in curve_df.iterrows()
-    ]
+from app.services.race_service import build_tire_stints, build_driver_curves

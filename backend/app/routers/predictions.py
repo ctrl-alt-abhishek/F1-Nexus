@@ -126,61 +126,16 @@ async def get_race_prediction(
         return RaceOutcomeSchema(round_id=round_id, predictions=cached)
 
     def _query():
-        rnd = db.query(Round).filter(Round.id == round_id).first()
-        if rnd is None:
-            return None, []
+        from app.services.prediction_service import compute_race_win_probabilities
+        return compute_race_win_probabilities(round_id, db)
 
-        from sqlalchemy import text
-        # Get driver win rates from race_results across all seeded data
-        result = db.execute(text("""
-            SELECT
-                rr.driver_code,
-                COUNT(*) AS total_races,
-                SUM(CASE WHEN rr.finish_position = 1 THEN 1 ELSE 0 END) AS wins,
-                AVG(rr.finish_position) AS avg_position
-            FROM race_results rr
-            JOIN rounds r ON r.id = rr.round_id
-            WHERE rr.finish_position IS NOT NULL
-            GROUP BY rr.driver_code
-            ORDER BY avg_position ASC
-        """))
-        rows = result.fetchall()
-        return rnd, rows
+    predictions = await asyncio.to_thread(_query)
 
-    rnd, rows = await asyncio.to_thread(_query)
-
-    if rnd is None:
+    if predictions is None:
         raise HTTPException(404, f"Round {round_id} not found")
 
-    if not rows:
+    if not predictions:
         raise HTTPException(404, "No race results available for prediction")
-
-    # Simple Bayesian win probability: smooth win rate by overall performance
-    # Each driver gets a base probability proportional to (1 / avg_position).
-    # Laplace smoothing: add 1 fictitious win and 10 fictitious races.
-    import numpy as np
-
-    raw_scores = []
-    driver_codes = []
-    for row in rows:
-        driver_code, total_races, wins, avg_pos = row
-        smoothed_rate = (wins + 1) / (total_races + 10)
-        pos_score = 1.0 / max(float(avg_pos or 10), 1.0)
-        raw_scores.append(0.5 * smoothed_rate + 0.5 * pos_score)
-        driver_codes.append(driver_code)
-
-    scores = np.array(raw_scores)
-    win_probs = scores / scores.sum()  # Normalize to sum to 1
-
-    predictions = [
-        RaceOutcomeDriverSchema(
-            driver_code=dc,
-            win_probability=float(wp),
-            points_distribution=[],  # Full Monte Carlo deferred — see championship endpoint
-        )
-        for dc, wp in zip(driver_codes, win_probs)
-    ]
-    predictions.sort(key=lambda x: x.win_probability, reverse=True)
 
     _cache_set(cache_key, predictions)
 
@@ -212,18 +167,8 @@ async def get_pit_window(
         )
 
     def _get_total_laps():
-        rnd = db.query(Round).filter(Round.id == round_id).first()
-        if not rnd:
-            return None
-        # Approximate total laps from seeded lap data
-        from sqlalchemy import text, func
-        from app.models.sql import Lap as LapModel
-        result = (
-            db.query(func.max(LapModel.lap_number))
-            .filter(LapModel.round_id == round_id)
-            .scalar()
-        )
-        return result or 60  # Fallback: typical race length
+        from app.services.prediction_service import get_total_laps_for_round
+        return get_total_laps_for_round(round_id, db)
 
     total_laps = await asyncio.to_thread(_get_total_laps)
     if total_laps is None:

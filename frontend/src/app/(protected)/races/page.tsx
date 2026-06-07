@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { Flag, MapPin, Calendar, ArrowRight } from "lucide-react";
 
@@ -77,7 +78,11 @@ export default function RacesPage() {
 
       {/* Grid List */}
       {loading ? (
-        <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-[250px] w-full" />
+          ))}
+        </div>
       ) : races.length === 0 ? (
         <div className="text-center py-20 text-on-surface-variant/50 font-mono uppercase text-sm border border-dashed border-white/5 rounded-2xl bg-white/[0.01]">
           No races found for {year} season.

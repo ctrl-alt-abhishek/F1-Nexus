@@ -44,6 +44,7 @@ async def sync_user(
         # Update mutable fields from token claims on each login.
         ref.update({"email": email})
         profile = doc.to_dict()
+        profile["email"] = email
 
     return UserProfileSchema(
         uid=uid,

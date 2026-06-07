@@ -266,16 +266,41 @@ def seed_round_to_db(year: int, round_number: int, db: Session) -> str:
     db.query(Lap).filter(Lap.round_id == round_id).delete()
     db.flush()
 
-    clean_laps = get_clean_laps(race_session)
-    if not clean_laps.empty:
+    # Load all laps from the session
+    all_laps = race_session.laps.copy() if race_session.laps is not None else None
+    if all_laps is not None and not all_laps.empty and "LapTime" in all_laps.columns:
+        # Filter to laps with a recorded LapTime
+        all_laps = all_laps[all_laps["LapTime"].notna()].copy()
+        all_laps["lap_time_s"] = all_laps["LapTime"].dt.total_seconds()
+
+        # Compute median and standard deviation of clean laps for outlier filtering
+        clean_mask = (
+            all_laps["PitOutTime"].isna() &
+            all_laps["PitInTime"].isna() &
+            (all_laps["TrackStatus"] == "1")
+        )
+        clean_lap_times = all_laps.loc[clean_mask, "lap_time_s"]
+        if not clean_lap_times.empty:
+            median = clean_lap_times.median()
+            std = clean_lap_times.std()
+            outlier_limit = median + 2 * std
+        else:
+            outlier_limit = 999999.0
+
         lap_objects = []
-        for _, row in clean_laps.iterrows():
+        for _, row in all_laps.iterrows():
             driver_code = str(row.get("Driver", "???"))[:3]
             # Ensure the driver exists (sometimes laps have unknown drivers)
             _upsert_driver(driver_code, None, db)
 
             compound = str(row.get("Compound", "UNKNOWN")).upper()
             track_status = str(row.get("TrackStatus", "1"))
+
+            is_pit = pd.notna(row.get("PitOutTime")) or pd.notna(row.get("PitInTime"))
+            is_clean_status = track_status == "1"
+            is_not_outlier = float(row["lap_time_s"]) <= outlier_limit
+
+            is_valid = (not is_pit) and is_clean_status and is_not_outlier
 
             lap_objects.append(Lap(
                 round_id=round_id,
@@ -288,14 +313,14 @@ def seed_round_to_db(year: int, round_number: int, db: Session) -> str:
                 compound=compound if compound != "NAN" else None,
                 tyre_life=_safe_int(row.get("TyreLife")),
                 stint=_safe_int(row.get("Stint")),
-                is_valid=True,
+                is_valid=is_valid,
                 track_status=track_status[:5],
                 position=_safe_int(row.get("Position")),
             ))
 
         db.bulk_save_objects(lap_objects)
         db.flush()
-        logger.info("Inserted %d laps for %s %d R%d", len(lap_objects), event_name, year, round_number)
+        logger.info("Inserted %d laps (%d valid) for %s %d R%d", len(lap_objects), sum(1 for l in lap_objects if l.is_valid), event_name, year, round_number)
 
     # ── Qualifying ───────────────────────────────────────────────────────────
     try:

@@ -12,13 +12,16 @@ interface ChatMessage {
   data?: any[];
 }
 
+const CURRENT_YEAR = new Date().getFullYear();
+const LAST_YEAR = CURRENT_YEAR - 1;
+
 const FALLBACK_SUGGESTIONS = [
-  "Who had the fastest lap at Monaco 2023?",
-  "Compare VER and NOR tyre degradation at Silverstone 2024",
-  "Which circuit had the most safety car periods in 2023?",
-  "What was LEC's average qualifying gap to pole in 2024?",
-  "Which driver had the most pit stops in the 2024 season?",
-  "What is the average lap time difference between SOFT and HARD compounds at Spa?",
+  `Who had the fastest lap at Monaco ${LAST_YEAR}?`,
+  `Compare VER and NOR tyre degradation at Silverstone ${CURRENT_YEAR}`,
+  `Which circuit had the most safety car periods in ${LAST_YEAR}?`,
+  `What was LEC's average qualifying gap to pole in ${CURRENT_YEAR}?`,
+  `Which driver had the most pit stops in the ${CURRENT_YEAR} season?`,
+  `What is the average lap time difference between SOFT and HARD compounds at Spa?`,
 ];
 
 export default function ChatPage() {

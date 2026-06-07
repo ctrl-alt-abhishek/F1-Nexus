@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     MODELS_DIR: str = "./models"
 
     # ── Live Timing Simulation ──────────────────────────────────────────────
-    SIMULATE_LIVE_TIMING: bool = True
+    SIMULATE_LIVE_TIMING: bool = False
 
     # ── App settings ────────────────────────────────────────────────────────
     # CORS origin for the Next.js frontend

@@ -9,6 +9,8 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts
 
 interface DriverUpdate {
   code: string;
+  name: string;
+  color: string;
   position: number;
   gap_to_leader: number;
   compound: string | null;
@@ -42,6 +44,7 @@ interface LiveState {
   location?: string | null;
   country?: string | null;
   next_race?: NextRace | null;
+  rc_messages?: any[];
 }
 
 export default function LivePage() {
@@ -94,6 +97,7 @@ export default function LivePage() {
             current_lap: data.lap,
             timestamp: data.timestamp,
             drivers: data.drivers,
+            rc_messages: data.rc_messages,
           }));
         }
       }
@@ -297,9 +301,9 @@ export default function LivePage() {
                   >
                     <td className="py-4 pl-4 font-bold text-primary">{String(driver.position || index + 1).padStart(2, '0')}</td>
                     <td className="py-4 pl-2 font-space font-bold flex items-center gap-3">
-                      <div className="w-1 h-8 rounded-full" style={{ backgroundColor: getTyreIndicatorColor(driver.compound) }}></div>
+                      <div className="w-1 h-8 rounded-full" style={{ backgroundColor: driver.color || getTyreIndicatorColor(driver.compound) }}></div>
                       <div>
-                        <p className="text-white font-bold font-mono text-sm">{driver.code}</p>
+                        <p className="text-white font-bold font-mono text-sm">{driver.name || driver.code}</p>
                         <p className="text-[9px] text-on-surface-variant uppercase tracking-tighter">
                           {driver.pitting ? "PIT LANE" : "ON TRACK"}
                         </p>
@@ -340,20 +344,30 @@ export default function LivePage() {
       {/* Right Side: Strategy and Alerts */}
       <aside className="col-span-12 lg:col-span-4 flex flex-col gap-6 h-full overflow-hidden">
         {/* Race Control Alerts */}
-        <div className="glass-card p-5 flex flex-col shrink-0">
-          <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2">
+        <div className="glass-card p-5 flex flex-col shrink-0 h-72">
+          <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-2 shrink-0">
             <h3 className="font-bold text-white font-space text-sm">Race Control</h3>
             <span className="text-[10px] font-mono font-bold text-on-surface-variant uppercase tracking-wider">Feed</span>
           </div>
-          <div className="space-y-3">
-            <div className="p-3 bg-primary/10 border-l-2 border-primary rounded-r-xl">
-              <p className="text-[9px] font-mono font-bold text-primary tracking-widest uppercase">TRACK INCIDENT</p>
-              <p className="text-xs text-white leading-tight font-sans mt-0.5">Local Yellow Flag Sector 2. recovery operations underway.</p>
-            </div>
-            <div className="p-3 bg-emerald-500/10 border-l-2 border-emerald-500 rounded-r-xl">
-              <p className="text-[9px] font-mono font-bold text-emerald-400 tracking-widest uppercase">DRS STATUS</p>
-              <p className="text-xs text-white leading-tight font-sans mt-0.5">DRS has been enabled. Track surfaces reported fully dry.</p>
-            </div>
+          <div className="space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-2">
+            {(!state.rc_messages || state.rc_messages.length === 0) ? (
+              <div className="p-3 bg-white/5 border-l-2 border-white/20 rounded-r-xl">
+                <p className="text-[9px] font-mono font-bold text-on-surface-variant tracking-widest uppercase">SYSTEM</p>
+                <p className="text-xs text-white leading-tight font-sans mt-0.5">No recent race control messages.</p>
+              </div>
+            ) : (
+              state.rc_messages.map((msg: any, idx: number) => {
+                const isIncident = msg.category?.toUpperCase() === "FLAG" || msg.category?.toUpperCase() === "SAFETYCAR";
+                return (
+                  <div key={idx} className={`p-3 border-l-2 rounded-r-xl ${isIncident ? 'bg-primary/10 border-primary' : 'bg-emerald-500/10 border-emerald-500'}`}>
+                    <p className={`text-[9px] font-mono font-bold tracking-widest uppercase ${isIncident ? 'text-primary' : 'text-emerald-400'}`}>
+                      {msg.category || "INFO"}
+                    </p>
+                    <p className="text-xs text-white leading-tight font-sans mt-0.5">{msg.message}</p>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -379,25 +393,40 @@ export default function LivePage() {
         </div>
 
         {/* Strategy window */}
-        <div className="glass-card p-5 mb-2 shrink-0">
-          <h3 className="font-bold text-white font-space text-sm mb-4">Strategy Window</h3>
-          <div className="relative h-12 bg-white/5 rounded-2xl flex items-center px-4 border border-white/10 overflow-hidden">
-            <div className="absolute top-0 left-0 h-full w-[60%] bg-yellow-500/10 border-r border-yellow-500/30"></div>
-            <div className="absolute top-0 right-0 h-full w-[40%] bg-white/5"></div>
-            <div className="relative z-10 w-full flex justify-between items-center text-[10px] font-mono font-bold">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)] animate-pulse"></span>
-                <span>MEDIUM STINT</span>
+        {(() => {
+          const leader = state.drivers?.find(d => d.position === 1 && d.predicted_stint_end) || state.drivers?.find(d => d.predicted_stint_end);
+          const compound = leader?.compound || "UNKNOWN";
+          const stintEnd = leader?.predicted_stint_end || 0;
+          const currentLap = state.current_lap || 0;
+          const lapsToPit = Math.max(0, stintEnd - currentLap);
+          const isWindowOpen = lapsToPit <= 3 && lapsToPit > 0;
+          const isPastWindow = lapsToPit === 0 && currentLap > 0;
+          
+          return (
+            <div className="glass-card p-5 mb-2 shrink-0">
+              <h3 className="font-bold text-white font-space text-sm mb-4">ML Strategy (Race Leader)</h3>
+              <div className="relative h-12 bg-white/5 rounded-2xl flex items-center px-4 border border-white/10 overflow-hidden">
+                <div className={`absolute top-0 left-0 h-full transition-all duration-1000 ${getTyreStyle(compound)} opacity-20`} style={{ width: `${Math.min(100, (currentLap / (stintEnd || 1)) * 100)}%` }}></div>
+                <div className="relative z-10 w-full flex justify-between items-center text-[10px] font-mono font-bold">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] animate-pulse ${getTyreStyle(compound).split(' ')[1]}`} style={{ backgroundColor: getTyreIndicatorColor(compound) }}></span>
+                    <span className="uppercase">{leader?.name || "LEADER"} • {compound} STINT</span>
+                  </div>
+                  <div className="bg-black/40 px-2.5 py-1 rounded-full border border-white/5">
+                    <span>PIT WINDOW LAP {Math.max(1, stintEnd - 2)}-{stintEnd + 2}</span>
+                  </div>
+                </div>
               </div>
-              <div className="bg-black/40 px-2.5 py-1 rounded-full border border-white/5">
-                <span>PIT WINDOW LAP 40-45</span>
-              </div>
+              <p className="mt-3 text-[10px] text-on-surface-variant italic text-center font-space">
+                {stintEnd === 0 
+                  ? "Waiting for ML strategy engine predictions..." 
+                  : isPastWindow 
+                    ? `Tyres have exceeded optimal ML stint life. Pit stop expected.`
+                    : `Optimal pit stop window opens in ${lapsToPit} laps.`}
+              </p>
             </div>
-          </div>
-          <p className="mt-3 text-[10px] text-on-surface-variant italic text-center font-space">
-            Optimal pit stop window opens in 3 laps. Expected degradation gradient: 1.15% per lap.
-          </p>
-        </div>
+          );
+        })()}
       </aside>
     </div>
   );
